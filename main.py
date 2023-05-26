@@ -27,7 +27,7 @@ def main(argv):
         return 0
 
     if task == "stats":
-        make_histograms("/home/benedetti/Bureau/testing/assembled", "measures-", 100)
+        make_histograms("/home/benedetti/Bureau/testing/assembled", "_measures.json", 100)
         return 0
 
     if task == "utests":

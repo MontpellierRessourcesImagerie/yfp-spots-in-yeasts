@@ -1,10 +1,57 @@
-from spotsInYeasts.spotsInYeasts import segment_spots, build_sets, place_markers, create_random_lut, segment_transmission, associate_spots_yeasts, estimateUniformity
-from skimage.io import imsave, ImageCollection
+from spotsInYeasts.spotsInYeasts import segment_spots, seek_channels, place_markers, create_random_lut, segment_transmission, associate_spots_yeasts, estimateUniformity, increase_contrast
+from skimage.io import imsave, imread, imshow, ImageCollection
+from skimage.morphology import dilation, disk
 import matplotlib.pyplot as plt
 import warnings
 import os
 import json
+import time
 import numpy as np
+import cv2
+from termcolor import colored
+
+
+def place_reference_marker(image, marker, position):
+    mark_shape = marker.shape
+    im_shape   = image.shape
+    pos_line   = max(0, int(position[0] - mark_shape[0] / 2))
+    pos_col    = max(0, int(position[1] - mark_shape[1] / 2))
+
+    for l in range(mark_shape[0]):
+        for c in range(mark_shape[1]):
+            y = pos_line+l
+            x = pos_col+c
+            if (y >= im_shape[0]) or (x >= im_shape[1]):
+                continue
+            image[y, x] = marker[l, c]
+
+
+def create_reference(labeled_cells, brightfield, fluo, spots_list):
+    # Outline of each cell
+    selem = disk(6)
+    dilated = dilation(labeled_cells, selem)
+    dilated -= labeled_cells
+    mask = ((dilated > 0)*65535).astype(np.uint16)
+    brightfield = increase_contrast(brightfield)
+
+    # Mask with spots positions
+    marker = cv2.imread("/home/benedetti/Documents/marker.png", cv2.IMREAD_UNCHANGED)
+    marker = np.sum(marker, axis=2) # ((marker[:,:,2] > 0) * 65535).astype(np.uint16)
+    marker = (marker / marker.max()) * 65535
+    spots_reference = np.zeros(fluo.shape, dtype=np.uint16)
+    
+    for spot_pos in spots_list:
+        place_reference_marker(spots_reference, marker, spot_pos)
+
+    # Assembling the reference
+    reference = np.stack([
+            mask,
+            brightfield,
+            spots_reference,
+            fluo
+        ])
+    
+    return reference
 
 
 def launch_assembled_test():
@@ -20,40 +67,47 @@ def launch_assembled_test():
     # Sets of channels representing the same image:
     components = [
         ('brightfield', '_w2bf.tif'),
-        ('yfp'        , '_w1yfp.tif'),
-        ('config'     , '.nd')
+        ('yfp'        , '_w1yfp.tif')
     ]
-    image_sets = build_sets(root_path, components)
+    image_sets = seek_channels(root_path, components)
+    exec_start = time.time()
 
     for i, image in enumerate(image_sets):
-        print(f"Using: {image['brightfield']}")
+        print("")
+        print(colored(f"========= Processing: `{image['raw']}` ({i+1}/{len(image_sets)}) =========", 'white', attrs=['bold']))
 
-        lbld, ori = segment_transmission(os.path.join(root_path, image['brightfield']))
-        spots     = segment_spots(os.path.join(root_path, image['yfp']))
+        start = time.time()
+        transmission_stack = np.array(ImageCollection(os.path.join(root_path, image['brightfield'])))
+        fluo_stack         = np.array(ImageCollection(os.path.join(root_path, image['yfp'])))
+
+        lbld, ori = segment_transmission(transmission_stack)
+        spots     = segment_spots(fluo_stack)
 
         ttl, ref = estimateUniformity(spots['locations'], lbld.shape)
-        is_non_uniform = ttl > ref
 
-        if not is_non_uniform:
-            print(f"The image `{image['brightfield']}` failed to be processed.")
+        if ttl <= ref:
+            print(colored(f"The image `{image['raw']}` failed to be processed.", 'red'))
             continue
 
-        ownership, lbl_spots = associate_spots_yeasts(lbld, spots['locations'], spots['original'], spots['mask'])
+        ownership, lbl_spots, spots_list = associate_spots_yeasts(lbld, spots['locations'], spots['original'], spots['mask'])
         
-        measures = open(f"/home/benedetti/Bureau/testing/assembled/measures-{str(i).zfill(3)}.json", 'w')
+        measures = open(os.path.join(save_path, image['metrics']), 'w')
         json.dump(ownership, measures)
         measures.close()
 
-        reference = np.stack([
-            lbld,
-            ori,
-            spots['contrasted'],
-            lbl_spots
-        ])
-        imsave(f"/home/benedetti/Bureau/testing/assembled/reference-{str(i).zfill(3)}.tif", reference)
+        print(colored(f"{image['raw']} processed in {round(time.time()-start, 1)}s.", 'green'))
+
+        reference = create_reference(lbld, ori, spots['original'], spots_list)
+        imsave(os.path.join(save_path, image['control']), reference)
+        print(f"Control image saved as: ", end="")
+        print(colored(image['control'], 'white', attrs=['underline']))
+    
+    print("")
+    print(colored(f"========= DONE. ({round(time.time()-exec_start, 1)}s) =========", 'green', attrs=['bold']))
+    print("")
 
 
-def make_histograms(root_path, prefix, intensity_bins):
+def make_histograms(root_path, suffix, intensity_bins):
     """
     Here we build two histograms.
     The first shows the repartition of the number of spots in cells.
@@ -73,7 +127,7 @@ def make_histograms(root_path, prefix, intensity_bins):
     if not os.path.isdir(root_path):
         return [], []
     
-    content     = [c for c in os.listdir(root_path) if c.startswith(prefix)]
+    content     = [c for c in os.listdir(root_path) if c.endswith(suffix)]
     counter     = [] # Will contain the number of spots in each cell.
     intensities = [] # Will contain the average intensity of each spot in each cell.
 
@@ -100,7 +154,7 @@ def make_histograms(root_path, prefix, intensity_bins):
     # Histogram of intensities repartition
     intensities  = np.array(intensities)
     hIntensities, labels = np.histogram(intensities, bins=intensity_bins)
-    ax2.set_xlim([0, 65535])
+    # ax2.set_xlim([0, 65535])
     ax2.plot(labels[:-1], hIntensities, '-')
     ax2.set_title("Intensity per spot")
 
@@ -110,3 +164,14 @@ def make_histograms(root_path, prefix, intensity_bins):
         print(f"{round(c/summed*100, 2)}% of cells have {i} spot(s).")
 
     plt.show()
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#
+# Que veut-on vérifier avec les références ?
+#
+# 1. On veut check que les cellules ont été correctement segmentées.
+#    Pour cela, on a besoin des outlines et du channel de brightfield original.
+#    Il faut ajuster le contraste du brightfield.
+#
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

@@ -1,4 +1,4 @@
-from spotsInYeasts.spotsInYeasts import segment_spots, build_sets, place_markers
+from spotsInYeasts.spotsInYeasts import segment_spots, seek_channels, place_markers
 import matplotlib.pyplot as plt
 import warnings
 import os
@@ -13,12 +13,12 @@ def launch_test_fluo():
     # Sets of channels representing the same image:
     components = [
         ('brightfield', '_w2bf.tif'),
-        ('yfp'        , '_w1yfp.tif'),
-        ('config'     , '.nd')
+        ('yfp'        , '_w1yfp.tif')
     ]
-    image_sets = build_sets(root_path, components)
+    image_sets = seek_channels(root_path, components)
 
     for image in image_sets:
         t = segment_spots(os.path.join(root_path, image['yfp']))
-        marked = place_markers(t['mask'], t['locations'])
+        t_shape = t['mask'].shape[0:2]
+        marked = place_markers(t_shape, t['locations'])
         plt.imsave(os.path.join(save_path, image['yfp'].replace(".tif", ".png")), marked, cmap='gray')

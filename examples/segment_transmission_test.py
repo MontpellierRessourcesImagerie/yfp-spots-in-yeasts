@@ -1,4 +1,4 @@
-from spotsInYeasts.spotsInYeasts import create_random_lut, segment_transmission, build_sets
+from spotsInYeasts.spotsInYeasts import create_random_lut, segment_transmission, seek_channels
 import matplotlib.pyplot as plt
 import os
 
@@ -15,10 +15,9 @@ def launch_test_transmission():
     # Sets of channels representing the same image:
     components = [
         ('brightfield', '_w2bf.tif'),
-        ('yfp'        , '_w1yfp.tif'),
-        ('config'     , '.nd')
+        ('yfp'        , '_w1yfp.tif')
     ]
-    image_sets = build_sets(root_path, components)
+    image_sets = seek_channels(root_path, components)
 
     for image in image_sets:
         print(f"Processing transmission segmentation on: {image['brightfield']}")
