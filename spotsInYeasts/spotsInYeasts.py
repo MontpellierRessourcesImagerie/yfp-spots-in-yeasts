@@ -11,6 +11,7 @@ import cv2
 from scipy.ndimage import gaussian_laplace
 from skimage.filters import threshold_otsu
 from skimage.segmentation import watershed, clear_border
+from skimage.morphology import dilation, disk
 
 from cellpose import models, utils, io
 import glob
@@ -19,7 +20,7 @@ import argparse
 import random
 
 
-def create_random_lut():
+def create_random_lut(raw=False):
     """
     Creates a random LUT of 256 slots to display labeled images with colors far apart from each other.
     Black is reserved for the background.
@@ -30,8 +31,31 @@ def create_random_lut():
     lut = np.random.uniform(0.0, 1.0, (256, 3))
     np.random.shuffle(lut)
     lut[0] = (0.0, 0.0, 0.0)
+    
+    if raw:
+        return lut
+
     cmap = LinearSegmentedColormap.from_list('random_lut', lut)
     return cmap
+
+
+def make_outlines(labeled_cells, thickness=4):
+    """
+    Turns a labeled image into a mask showing the outline of each label.
+    The resulting image is boolean.
+
+    Args:
+        labeled_cells: The image containing labels.
+        thickness: The desired thickness of outlines.
+    
+    Returns:
+        A mask representing outlines of cells.
+    """
+    selem    = disk(thickness)
+    dilated  = dilation(labeled_cells, selem)
+    dilated -= labeled_cells
+    
+    return dilated > 0
 
 
 def seek_channels(root_dir, channels):
@@ -131,8 +155,9 @@ def segment_yeasts_cells(transmission, gpu=True):
     Returns:
         (image) An image containing labels (one value == one individual).
     """
+    
     model = models.Cellpose(gpu=gpu, model_type='cyto')
-    chan = [0, 1]
+    chan = [0, 0]
     print("Segmenting cells...")
     masks, flows, styles, diams = model.eval(transmission, diameter=None, channels=chan)
 
@@ -180,7 +205,7 @@ def place_markers(shp, m_list):
 #################################################################################
 
 
-def segment_transmission(stack):
+def segment_transmission(stack, gpu=True):
     """
     Takes the path of an image that contains some yeasts in transmission.
 
@@ -211,15 +236,14 @@ def segment_transmission(stack):
         input_bf = max_proj
     else:
         print("Image is a single slice.")
-        input_bf = stack
+        input_bf = np.squeeze(stack)
     
     # >>> Labeling the transmission channel:
-    labeled_transmission = segment_yeasts_cells(input_bf)
-    
+    labeled_transmission = segment_yeasts_cells(input_bf, gpu)
+
     # >>> Finding and removing the labels touching the borders:
-    cleared_bd = np.zeros(labeled_transmission.shape, dtype=labeled_transmission.dtype)
-    clear_border(labeled_transmission, buffer_size=3, out=cleared_bd)
-    print(f"Cells segmentation done. {len(np.unique(cleared_bd))} cells found.")
+    cleared_bd = clear_border(labeled_transmission, buffer_size=3)
+    print(f"Cells segmentation done. {len(np.unique(cleared_bd))-1} cells found.")
 
     return cleared_bd, input_bf
 
@@ -248,7 +272,7 @@ def segment_spots(stack):
     if len(stack_sz) > 2: # We have a stack, not a single image.
         input_yfp = np.max(stack, axis=0)
     else:
-        input_yfp = stack
+        input_yfp = np.squeeze(stack)
 
     print("Starting spots segmentation...")
     save_yfp  = np.copy(input_yfp)
@@ -351,38 +375,3 @@ def associate_spots_yeasts(labeled_cells, spots_list, original_yfp, mask):
 
     return ownership, labels, true_spots
 
-
-"""
-    >>> IMPLEMENTATION:
-
-- [X] Faire en sorte que même les cellules qui n'ont aucun spot soient comptées.
-- [X] Modifier les fonctions de segmentation pour qu'elles ne prennent pas un chemin mais une image pour pouvoir s'adapter aux ".czi".
-- [X] Rajouter des lignes de logs dans l'exécution.
-- [X] Pour l'image de contrôle, plutôt que faire des masques, on devrait:
-      |  - Mettre un outline des cellules (en binaire) dans le premier channel.
-      |  - Mettre l'original des cellules sur le second channel.
-      |  - Mettre 
-- [X] {create_random_lut} Comment faire en sorte que les points consécutifs soient aussi loin que possible les uns des autres ?
-- [ ] Stocker les résultats intermédiaires pour pouvoir découper en plugin.
-- [X] {estimateUniformity} Le 2048 devrait être emprunté à la taille des images, ne pas être hard-codée.
-- [X] Le masque peut encore être utilisé pour le marker based watershed.
-- [ ] Changer l'implémentation pour qu'on puisse gérer les fichiers (.nd + .tif + .tif) et les fichiers (.czi).
-      | Le problème se pose pour le batching.
-- [ ] Refaire l'implémentation du détecteur de cellules mortes.
-- [X] Faire des histogrammes du nombre de spots, de leur intensité, ... ?
-- [X] Ajouter le marker based watershed dans la méthode de détection de spots.
-- [X] On veut l'aire, la position et l'intensité au centre des spots.
-- [X] Pour l'image de controle de la transmission, plutôt produire des contours que des labels qui sont complexes à distinguer à cause de leur proximité.
-- [X] Essayer de détecter les mauvaises détections automatiquement. 
-      | Cela peut être fait en estimant la distribution des spots, ou on peut essayer de voir s'il y a plus de N points par cellule.
-- [ ] Est-ce qu'on doit retirer le background pour faires les mesures sur la couche de fluo ?
-      | Si oui, est-ce qu'on utilise un algo ou simplement l'image qui représente le background ?
-- [?] Refaire l'implémentation du détecteur de distribution
-
-    >>> TESTS:
-
-- [seek_channels] Check that isolated elements are correctly suppressed, that hidden elements are ignored, that every image has its associated components.
-- [create_random_lut] Check that points are uniformely scattered in space.
-- [segment_yeasts_cells] Verify the number of labels on a known image.
-
-"""
