@@ -35,17 +35,17 @@ def segment_fluo_gui():
     global _state_
 
     start = time.time()
-    spots_properties = segment_spots(_state_.current_viewer().layers['yfp'].data)
+    spots_locations, labeled_spots = segment_spots(_state_.current_viewer().layers['yfp'].data)
     
     # Avoid duplicating layers in case we relaunch analysis.
     if 'spots-positions' in _state_.current_viewer().layers:
-        _state_.current_viewer().layers['spots-positions'].data = spots_properties['locations']
+        _state_.current_viewer().layers['spots-positions'].data = spots_locations
     else:
-        _state_.current_viewer().add_points(spots_properties['locations'], name="spots-positions")
+        _state_.current_viewer().add_points(spots_locations, name="spots-positions")
     
     # Checking whether the distribution is uniform or not.
     # We consider that the segmentation has failed if it is uniform.
-    ttl, ref = estimateUniformity(spots_properties['locations'], spots_properties['mask'].shape)
+    ttl, ref = estimateUniformity(spots_locations, labeled_spots.shape)
     if ttl <= ref:
         print(colored(f"The image `{_state_.get_current_name()}` failed to be processed.", 'red'))
         return
@@ -56,8 +56,9 @@ def segment_fluo_gui():
         print(colored("Cells segmentation not available yet.", 'yellow'))
         return
 
-    lbld = _state_.current_viewer().layers['labeled-cells'].data
-    ownership, lbl_spots, spots_list = associate_spots_yeasts(lbld, spots_properties['locations'], spots_properties['original'], spots_properties['mask'])
+    labeled_cells = _state_.current_viewer().layers['labeled-cells'].data
+    yfp_original  = _state_.current_viewer().layers['yfp'].data
+    ownership     = associate_spots_yeasts(labeled_cells, labeled_spots, yfp_original)
 
     measures = open(os.path.join(_state_.get_export_path(), _state_.get_current_name() + "_measures.json"), 'w')
     json.dump(ownership, measures)
@@ -232,11 +233,12 @@ napari.run()
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# - [ ] On veut pouvoir retirer les labels en cliquant dessus.
-# - [ ] On veut pouvoir éditer les spots (ajout/délétion) en éditant le layer de spots.
-# - [ ] Créer un mode debug qui exporte les images intermédiaires dans un dossier pour monitor.
-# - [ ] Mettre les exécution dans des threads parallèles pour garder la GUI réactive.
-# - [ ] Rajouter des paramètres pour la détection de spots.
-# - [ ] Essayer de faire une GUI plus propre.
+# - [ ] We would like to be able to remove labels by clicking in the viewer.
+# - [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
+# - [ ] Move the execution in another thread to avoid the GUI freezing.
+# - [ ] Add settings for spots detection.
+# - [ ] Try to make a cleaner GUI.
+# - [ ] Use a threshold on the number of spots to detect dead cells.
+# - [ ] FWrite a Fiji macro to perform the conversion: ".nd" ---> ".tif".
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

@@ -8,36 +8,45 @@ The final product of this project should be a Napari plugin.
 For now, the code produces a JSON file compiling the data as well as histograms representing:
 - The number of spots per cell.
 - The average intensity of a spot.
+- The area of each spot.
+- The location of each spot.
 
 ## Segmentation of yeasts
 
 - The Cellpose's Python module was used for this step. It outputs a labeled image with one label per individual.
-- In the future, we want to let the user chose if he wants the dividing cell to be counted as a unique cell, or two individual ones.
+- We make sure to remove cells touching the border to avoid partial data.
+- We still need to implement a way to merge mother and daughter cells together.
+- The brightfield channel can't be used to determine if a cell is alive.
 
 ## Segmentation of spots:
 
-__Workflow:__
+- The fluorescent channel is very noisy. This is due to the low intensity of the YFP signal. We start by applying a __median filter__ to the image to reduce noise and prevent false positives.
+- A __Laplacian of Gaussian__ filter emphasizes the presence of spots.
+- Otsu thresholding was formerly used to turn the result of the LoG filter into a mask, but the results were rather unstable, so we switched to an __isodata thresholding__.
+- A __distance transform__ is applied to the mask we just created to locate the center of every spots. This operation will also separate spots merged together on the mask.
+- Seeking for local maximas will result in the creation of a points list, representing the center of spots.
+- Finally, a marker based watershed is used to segment the mask into different spots.
 
-- Median filter of the original fluo channel to reduce the noise.
-- Laplacian of Gaussian filter to emphasize the position of spots.
-- Otsu thresholding to create a binary mask from the LoG. FG=spot.
-- Distance transform to prepare the splitting of merged spots.
-- Find maxima to get one point per spot (useful in case of merged spots).
-- Marker based watershed to isolate spots areas.
+## Napari side:
+
+Here are three images representing the results. These images are layers in Napari.
+
+[!Brightfield](https://dev.mri.cnrs.fr/attachments/download/3009/brightfield.png)
+[!Segmentation](https://dev.mri.cnrs.fr/attachments/download/3010/labels.png)
+[!Spots](https://dev.mri.cnrs.fr/attachments/download/3011/spots.png)
 
 ---
 
 ## TODO
 
-- [X] Find a good implementation of marker based watershed.
-- [ ] Turn the monolithic block of code into a modular Napari plugin.
-- [X] Evaluate the focus of each slice and select usable slices.
-- [X] Determine an implementation to locate individual spots.
 - [ ] Browse all images to determine the optimal number of slices.
-- [X] Remove labels touching the border in the transmission channel.
-- [X] Start dividing the code into pieces executable independently.
-- [ ] Revise the code to work only on float64 images in [0.0, 1.0].
 - [ ] Determine an implementation to locate and isolate dead cells.
-- [X] Fix the code associating each spot to its owner cell.
-- [ ] Start writing the report to keep track of previous implementations.
+- [ ] Finish the report to keep track of previous implementations.
 - [ ] Finish writing the unit tests.
+- [ ] We would like to be able to remove labels by clicking in the viewer.
+- [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
+- [ ] Move the execution in another thread to avoid the GUI freezing.
+- [ ] Add settings for spots detection.
+- [ ] Try to make a cleaner GUI.
+- [ ] Use a threshold on the number of spots to detect dead cells.
+- [ ] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".

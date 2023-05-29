@@ -9,7 +9,7 @@ import time, os, sys
 from urllib.parse import urlparse
 import cv2
 from scipy.ndimage import gaussian_laplace
-from skimage.filters import threshold_otsu
+from skimage.filters import threshold_otsu, threshold_isodata
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
 
@@ -28,18 +28,12 @@ def create_random_lut(raw=False):
     Returns:
         A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
     """
-    lut = np.random.uniform(0.0, 1.0, (256, 3))
-    np.random.shuffle(lut)
+    lut    = np.random.uniform(0.0, 1.0, (256, 3))
     lut[0] = (0.0, 0.0, 0.0)
-    
-    if raw:
-        return lut
-
-    cmap = LinearSegmentedColormap.from_list('random_lut', lut)
-    return cmap
+    return lut if raw else LinearSegmentedColormap.from_list('random_lut', lut)
 
 
-def make_outlines(labeled_cells, thickness=4):
+def make_outlines(labeled_cells, thickness=3):
     """
     Turns a labeled image into a mask showing the outline of each label.
     The resulting image is boolean.
@@ -51,71 +45,9 @@ def make_outlines(labeled_cells, thickness=4):
     Returns:
         A mask representing outlines of cells.
     """
-    selem    = disk(thickness)
-    dilated  = dilation(labeled_cells, selem)
-    dilated -= labeled_cells
-    
+    selem   = disk(thickness)
+    dilated = dilation(labeled_cells, selem) - labeled_cells
     return dilated > 0
-
-
-def seek_channels(root_dir, channels):
-    """
-    This function is useful only if the machine that produced the images doesn't provide the user with multi-channel images.
-    In this case, each channel is in its own image, with some suffix to indicate the channel.
-    If your machine creates a multi-channels image, you don't need this function.
-
-    Args:
-        root_dir: The absolute path of a folder containing images.
-        channels: A list of tuples. Each tuple is of size 2. The first element is the name of what the channel represents (brightfield, spots, ...) and the second is the suffix used to represent this channel (_w2yfp.tif, _w1bf.tif, ...).
-    
-    Returns:
-        A list of dictionary. Each dict has the same size and keys, which are the names provided in the tuples. Each key points of the associated file.
-        Ex: If in the parameters you provided channels=[('brightfield', "_w2bf.tif"), ('spots', "_w1yfp.tif")], you will get a result like:
-        [
-            {
-                'brightfield': "some_file_w2bf.tif",
-                'spots'      : "some_file_w1yfp.tif"
-            },
-            {
-                'brightfield': "other_file_w2bf.tif",
-                'spots'      : "other_file_w1yfp.tif"
-            }
-        ]
-    """
-    # Safety check. Do we actually have the path of a folder?
-    if not os.path.isdir(root_dir):
-        print(f"`{root_dir}` is not the path of a folder.")
-        return []
-    
-    # Make a list of all the .nd files that are not hidden
-    headers = [c for c in os.listdir(root_dir) if (c.endswith(".nd")) and (not c.startswith('.')) and os.path.isfile(os.path.join(root_dir, c))]
-    images  = []
-
-    for header in headers:
-        raw_title = header.replace(".nd", "")
-        item      = {
-            'header' : header,
-            'control': raw_title + "_control.tif",
-            'raw'    : raw_title,
-            'metrics': raw_title + "_measures.json"
-        }
-        baselen = len(item)
-
-        for channel, suffix in channels:
-            item[channel] = raw_title + suffix
-        
-        if len(item) != len(channels)+baselen:
-            print(f"Images associated with `{header}` couldn't be retreived.")
-            continue
-
-        images.append(item)
-
-    print(f"{len(images)} full images were detected:")
-    for item in images:
-        print(f"  - {item['header']}")
-    print("")
-
-    return images
 
 
 def find_focused_slice(stack, around=2):
@@ -137,7 +69,10 @@ def find_focused_slice(stack, around=2):
     nSlices, width, height = stack.shape
     maxSlice = np.argmax([cv2.Laplacian(stack[s], cv2.CV_64F).var() for s in range(nSlices)])
     selected = (max(0, maxSlice-around), min(nSlices-1, maxSlice+around))
+    
     print(f"Selected slices: {selected}. ({nSlices} slices available)")
+    if selected[1]-selected[0] != 2*around:
+        print(colored("Not enough slices available!", 'yellow'))
 
     # We make sure to stay in-bounds.
     return selected
@@ -274,28 +209,31 @@ def segment_spots(stack):
     else:
         input_yfp = np.squeeze(stack)
 
+    # >>> Contrast augmentation + noise reduction
     print("Starting spots segmentation...")
     save_yfp  = np.copy(input_yfp)
     input_yfp = increase_contrast(input_yfp)
     input_yfp = median_filter(input_yfp, size=3)
 
+    # >>> LoG filter + thresholding
     asf = input_yfp.astype(np.float64)
     LoG = gaussian_laplace(asf, sigma=3.0)
-    t = threshold_otsu(LoG)
+    t = threshold_isodata(LoG)
     mask = LoG < t
 
-    asf = mask.astype(np.float64)
+    # >>> Detection of spots location
+    asf     = mask.astype(np.float64)
     chamfer = distance_transform_edt(asf)
     maximas = peak_local_max(chamfer, min_distance=6)
     print(f"{len(maximas)} spots found before filtering.")
 
+    # >>> Isolating instances of spots
+    m_shape   = mask.shape[0:2]
+    markers   = place_markers(m_shape, maximas)
+    lbd_spots = watershed(~mask, markers, mask=mask).astype(np.uint16)
+
     # >>> Returning the results
-    return {
-        "original"  : save_yfp,
-        "contrasted": input_yfp,
-        "mask"      : mask,
-        "locations" : maximas
-    }
+    return maximas, lbd_spots
 
 
 def estimateUniformity(points, shape, gridSize=50):
@@ -326,7 +264,7 @@ def estimateUniformity(points, shape, gridSize=50):
     return (total, gridSize*gridSize-1)
 
 
-def associate_spots_yeasts(labeled_cells, spots_list, original_yfp, mask):
+def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
     """
     Associates each spot with the label it belongs to.
     A safety check is performed to make sure no spot falls in the background.
@@ -344,23 +282,19 @@ def associate_spots_yeasts(labeled_cells, spots_list, original_yfp, mask):
     unique_values = np.unique(labeled_cells)
     ownership     = {int(u): [] for u in unique_values if (u > 0)}
 
-    # Isolating instances of spots
-    m_shape     = mask.shape[0:2]
-    markers     = place_markers(m_shape, spots_list)
-    labels      = watershed(~mask, markers, mask=mask).astype(np.uint16)
-    spots_props = regionprops(labels, intensity_image=original_yfp)
+    spots_props = regionprops(labeled_spots, intensity_image=yfp)
     removed     = []
     true_spots  = []
 
     for spot in spots_props:
         (r, c) = spot.centroid
-        lbl = labeled_cells[int(r), int(c)]
+        lbl = int(labeled_cells[int(r), int(c)])
 
         if lbl == 0:
             removed.append(spot.label)
             continue # We are in the background
         
-        ownership[int(lbl)].append({
+        ownership[lbl].append({
             'location'      : (int(r), int(c)),
             'intensity_mean': float(spot['intensity_mean']),
             'area'          : float(spot['area']),
@@ -370,8 +304,8 @@ def associate_spots_yeasts(labeled_cells, spots_list, original_yfp, mask):
         true_spots.append((r, c))
     
     print(f"{len(true_spots)} spots still valid after filtering.")
-    removed_mask = np.isin(labels, removed)
-    labels[removed_mask] = 0
+    removed_mask = np.isin(labeled_spots, removed)
+    labeled_spots[removed_mask] = 0
 
-    return ownership, labels, true_spots
+    return ownership
 
