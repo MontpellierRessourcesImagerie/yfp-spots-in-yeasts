@@ -31,9 +31,9 @@ For now, the code produces a JSON file compiling the data as well as histograms 
 
 Here are three images representing the results. These images are layers in Napari.
 
-[!Brightfield](https://dev.mri.cnrs.fr/attachments/download/3009/brightfield.png)
-[!Segmentation](https://dev.mri.cnrs.fr/attachments/download/3010/labels.png)
-[!Spots](https://dev.mri.cnrs.fr/attachments/download/3011/spots.png)
+![Brightfield](https://dev.mri.cnrs.fr/attachments/download/3009/brightfield.png)
+![Segmentation](https://dev.mri.cnrs.fr/attachments/download/3010/labels.png)
+![Spots](https://dev.mri.cnrs.fr/attachments/download/3011/spots.png)
 
 ---
 
