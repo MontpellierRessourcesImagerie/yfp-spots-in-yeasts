@@ -12,6 +12,7 @@ from scipy.ndimage import gaussian_laplace
 from skimage.filters import threshold_otsu, threshold_isodata
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
+from termcolor import colored
 
 from cellpose import models, utils, io
 import glob
@@ -233,7 +234,7 @@ def segment_spots(stack):
     lbd_spots = watershed(~mask, markers, mask=mask).astype(np.uint16)
 
     # >>> Returning the results
-    return maximas, lbd_spots
+    return maximas, lbd_spots, save_yfp
 
 
 def estimateUniformity(points, shape, gridSize=50):
