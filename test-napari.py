@@ -1,5 +1,5 @@
 import napari
-from skimage.io import ImageCollection
+from tifffile import imread
 import numpy as np
 from magicgui import magicgui, widgets
 from pathlib import Path
@@ -30,6 +30,7 @@ def clear_layers_gui():
     global _state_
     _state_.current_viewer().layers.clear()
     _state_.reset_current()
+    _state_.clear_data()
 
 
 @magicgui(call_button="Split channels")
@@ -37,14 +38,16 @@ def split_channels_gui():
     global _state_
 
     nImages = len(_state_.current_viewer().layers)
-    if nImages != 1:
-        print(colored("Only one image must be loaded at a time.", 'red'))
-        return False
+
+    if not _state_.is_batch():
+        if nImages != 1:
+            print(colored("Only one image must be loaded at a time.", 'red'))
+            return False
 
     # (2, 2048, 2048)
     # (9, 2, 2048, 2048)
 
-    imIn = _state_.current_viewer().layers[0].data
+    imIn = _state_.get_image("_temp_")
     imSp = imIn.shape
 
     if len(imSp) not in [3, 4]:
@@ -58,25 +61,22 @@ def split_channels_gui():
         print(colored(f"Only 2 channels are expected. {nChannels} found.", 'red'))
         return False
     
-    _state_.set_current_name(_state_.current_viewer().layers[0].name)
-    _state_.current_viewer().layers.clear()
-    
+    if not _state_.is_batch():
+        _state_.set_current_name(_state_.current_viewer().layers[0].name)
+        _state_.current_viewer().layers.clear()
+
     a, b = np.split(imIn, indices_or_sections=2, axis=axis)
     
-    _state_.current_viewer().add_image(
-        np.squeeze(a),
-        rgb      = False,
-        name     = _yfp,
-        colormap = 'yellow',
-        blending = 'opaque'
-    )
+    _state_.set_image(_yfp, np.squeeze(a), {
+        'rgb'      : False,
+        'colormap' : 'yellow',
+        'blending' : 'opaque'
+    })
 
-    _state_.current_viewer().add_image(
-        np.squeeze(b),
-        rgb      = False,
-        name     = _bf,
-        blending = 'opaque'
-    )
+    _state_.set_image(_bf, np.squeeze(b), {
+        'rgb'      : False,
+        'blending' : 'opaque'
+    })
 
     return True
 
@@ -85,26 +85,21 @@ def split_channels_gui():
 def segment_brightfield_gui():
     global _state_
 
-    if _bf not in _state_.current_viewer().layers:
-        print(colored(_bf, 'red', attrs=['underline']))
+    if not _state_.required_key(_bf):
+        print(colored(_bf, 'red', attrs=['underline']), end="")
         print(colored(" channel not found.", 'red'))
         return False
 
     start = time.time()
-    labeled, projection = segment_transmission(_state_.current_viewer().layers[_bf].data, True)
-    _state_.current_viewer().layers[_bf].data = projection
-
-    if _lbl_c in _state_.current_viewer().layers:
-        _state_.current_viewer().layers[_lbl_c].data = labeled
-    else:
-        random_lut = create_random_lut(True)
-        _state_.current_viewer().add_image(
-            labeled, 
-            name     = _lbl_c, 
-            blending = "additive", 
-            rgb      = False, 
-            colormap = random_lut
-        )
+    labeled, projection = segment_transmission(_state_.get_image(_bf), True)
+    
+    random_lut = create_random_lut(True)
+    _state_.set_image(_bf, projection) # current_viewer().layers[_bf].data = projection
+    _state_.set_image(_lbl_c, labeled, {
+        'blending': "additive", 
+        'rgb'     : False, 
+        'colormap': random_lut
+    })
     
     print(colored(f"Segmented cells from `{_state_.get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
     return True
@@ -114,14 +109,14 @@ def segment_brightfield_gui():
 def segment_fluo_gui():
     global _state_
 
-    if _yfp not in _state_.current_viewer().layers:
-        print(colored(_yfp, 'red', attrs=['underline']))
+    if not _state_.required_key(_yfp):
+        print(colored(_yfp, 'red', attrs=['underline']), end="")
         print(colored(" channel not found.", 'red'))
         return False
 
     start = time.time()
-    spots_locations, labeled_spots, yfp = segment_spots(_state_.current_viewer().layers[_yfp].data)
-    _state_.current_viewer().layers[_yfp].data = yfp
+    spots_locations, labeled_spots, yfp = segment_spots(_state_.get_image(_yfp))
+    _state_.set_image(_yfp, yfp)
 
     # Checking whether the distribution is uniform or not.
     # We consider that the segmentation has failed if it is uniform.
@@ -130,18 +125,12 @@ def segment_fluo_gui():
         print(colored(f"The image `{_state_.get_current_name()}` failed to be processed.", 'red'))
         return False
     
-    # Avoid duplicating layers in case we relaunch analysis.
-    if _spots in _state_.current_viewer().layers:
-        _state_.current_viewer().layers[_spots].data = spots_locations
-    else:
-        _state_.current_viewer().add_points(spots_locations, name=_spots)
-
-    # Avoid duplicating layers in case we relaunch analysis.
-    if _lbl_s in _state_.current_viewer().layers:
-        _state_.current_viewer().layers[_lbl_s].data = labeled_spots
-    else:
-        random_lut = create_random_lut(True)
-        _state_.current_viewer().add_image(labeled_spots, name=_lbl_s, visible=False, colormap=random_lut)
+    random_lut = create_random_lut(True)
+    _state_.set_spots(spots_locations)
+    _state_.set_image(_lbl_s, labeled_spots, {
+        'visible' : False, 
+        'colormap': random_lut
+    })
     
     print(colored(f"Segmented spots from `{_state_.get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
     return True
@@ -149,34 +138,36 @@ def segment_fluo_gui():
 
 @magicgui(call_button="Extract stats")
 def extract_stats_gui():
-    if _lbl_c not in _state_.current_viewer().layers:
+    global _state_
+
+    if not _state_.required_key(_lbl_c):
         print(colored("Cells segmentation not available yet.", 'yellow'))
         return
-    
-    if _lbl_s not in _state_.current_viewer().layers:
+
+    if not _state_.required_key(_lbl_s):
         print(colored("Spots segmentation not available yet.", 'yellow'))
         return
 
-    labeled_cells = _state_.current_viewer().layers[_lbl_c].data
-    yfp_original  = _state_.current_viewer().layers[_yfp].data
-    labeled_spots = _state_.current_viewer().layers[_lbl_s].data
+    labeled_cells = _state_.get_image(_lbl_c)
+    yfp_original  = _state_.get_image(_yfp)
+    labeled_spots = _state_.get_image(_lbl_s)
     ownership     = associate_spots_yeasts(labeled_cells, labeled_spots, yfp_original)
 
-    measures_temp = tempfile.NamedTemporaryFile(prefix=_state_.get_current_name(), suffix=".json", delete=False)
-    measures_temp_path = measures_temp.name
-    measures = json.dumps(ownership)
-    measures_temp.write(measures.encode())
-    measures_temp.close()
+    measures_path = os.path.join(_state_.get_export_path(), _state_.get_current_name()+".json")
+    with open(measures_path, 'w') as measures_file:
+        json.dump(ownership, measures_file)
+        measures_file.close()
 
-    print(colored("Spots exported to: ", 'green'), end="")
-    print(colored(measures_temp_path,'green', attrs=['underline']))
+        print(colored("Spots exported to: ", 'green'), end="")
+        print(colored(measures_path,'green', attrs=['underline']))
 
-    if platform.system() == 'Windows':
-        os.startfile(measures_temp_path)
-    elif platform.system() == 'Darwin':  # macOS
-        subprocess.call(('open', measures_temp_path))
-    else:  # linux variants
-        subprocess.call(('xdg-open', measures_temp_path))
+        if not _state_.is_batch():
+            if platform.system() == 'Windows':
+                os.startfile(measures_path)
+            elif platform.system() == 'Darwin':  # macOS
+                subprocess.call(('open', measures_path))
+            else:  # linux variants
+                subprocess.call(('xdg-open', measures_path))
 
 
 @magicgui(
@@ -186,7 +177,11 @@ def extract_stats_gui():
 )
 def batch_folder_gui(input_folder: Path=Path.home(), output_folder: Path=Path.home()):
     global _state_
+    _state_.set_batch(True)
     exec_start = time.time()
+    
+    _state_.set_export_path(str(output_folder))
+    path = str(input_folder)
     clear_layers_gui()
 
     _state_.set_path(path)
@@ -198,9 +193,13 @@ def batch_folder_gui(input_folder: Path=Path.home(), output_folder: Path=Path.ho
     
     while _state_.next_item():
         _state_.load()
+        split_channels_gui()
+        segment_brightfield_gui()
+        segment_fluo_gui()
+        extract_stats_gui()
     
-    clear_layers_gui()
     print(colored(f"\n========= DONE. ({round(time.time()-exec_start, 1)}s) =========\n", 'green', attrs=['bold']))
+    _state_.set_batch(False)
 
     return True
 
@@ -208,6 +207,12 @@ def batch_folder_gui(input_folder: Path=Path.home(), output_folder: Path=Path.ho
 class State(object):
 
     def __init__(self):
+        # Images currently associated with out process
+        self.images = {}
+        # Array of coordinates representing detected spots
+        self.spots_data = None
+        # Boolean representing whether we are running in batch mode
+        self.batch = False
         # Queue of files to be processed.
         self.queue   = []
         # Path of a directory in which measures will be exported, only in batch mode.
@@ -232,6 +237,51 @@ class State(object):
             ], 
             name="Spots In Yeasts")
     
+    def is_batch(self):
+        return self.batch
+
+    def set_batch(self, val):
+        self.batch = val
+
+    def clear_data(self):
+        self.spots_data = None
+        self.images = {}
+
+    def set_spots(self, spots):
+        self.spots_data = spots
+
+        if self.batch:
+            return
+
+        if _spots in self.current_viewer().layers:
+            self.current_viewer().layers[_spots].data = spots
+        else:
+            self.current_viewer().add_points(self.spots_data, name=_spots)
+
+    def get_spots(self):
+        return self.spots_data
+
+    def set_image(self, key, data, args={}):
+        self.images[key] = data
+        
+        if self.batch:
+            return 
+        
+        if key in self.current_viewer().layers:
+            self.current_viewer().layers[key].data = data
+        else:
+            self.current_viewer().add_image(
+                data,
+                name=key,
+                **args
+            )
+    
+    def get_image(self, key):
+        return self.images[key]
+
+    def required_key(self, key):
+        return key in self.images
+
     def get_export_path(self):
         return self.e_path
 
@@ -271,7 +321,7 @@ class State(object):
             item = self.queue.pop(0)
             if os.path.isfile(item):
                 self.current = item
-                self.set_current_name(item.split('.')[0])
+                self.set_current_name(item.split(os.sep)[-1].split('.')[0])
                 return True
         
         return False
@@ -279,31 +329,15 @@ class State(object):
     # Loads the image stored in "self.current" in Napari.
     # A safety check ensures that several images can't be loaded simulteanously
     def load(self):
-        self.viewer.layers.clear()
-        print(colored(f"============ Working on: {self.get_current_name()} ============", 'green'))
+        hyperstack = np.array(imread(str(self.current)))
 
-        stack = ImageCollection(str(self.current))
-
-        if (stack is None) or (len(stack) != 2):
-            print(colored(f"Exactly two channels are required. {0 if (stack is None) else len(stack)} found.", 'red'))
+        if hyperstack is None:
+            print(colored(f"Failed to open: `{str(self.current)}`.", 'red'))
             return False
 
-        bf    = np.array(stack[0])
-        yfp   = np.array(stack[1])
-        
-        self.viewer.add_image(
-            yfp,
-            rgb=False,
-            name=_yfp,
-            colormap='yellow',
-            blending='opaque'
-        )
-        self.viewer.add_image(
-            bf,
-            rgb=False,
-            name=_bf,
-            blending='opaque'
-        )
+        print(colored(f"\n============ Working on: {self.get_current_name()} ============", 'green'))
+
+        self.set_image('_temp_', hyperstack)
 
         return True
 

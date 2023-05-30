@@ -40,13 +40,15 @@ Here are three images representing the results. These images are layers in Napar
 ## TODO
 
 - [ ] Browse all images to determine the optimal number of slices.
-- [ ] Determine an implementation to locate and isolate dead cells.
+- [X] Determine an implementation to locate and isolate dead cells.
 - [ ] Finish the report to keep track of previous implementations.
+- [ ] Implement a GUI-less batch mode (that doesn't show images in the viewer)
 - [ ] Finish writing the unit tests.
 - [ ] We would like to be able to remove labels by clicking in the viewer.
 - [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
 - [ ] Move the execution in another thread to avoid the GUI freezing.
-- [ ] Add settings for spots detection.
-- [ ] Try to make a cleaner GUI.
+- [X] Add settings for spots detection.
+- [X] Try to make a cleaner GUI.
 - [ ] Use a threshold on the number of spots to detect dead cells.
-- [ ] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".
+- [X] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".
+- [?] Ajouter une image de controle aux calques à chaque itération.
