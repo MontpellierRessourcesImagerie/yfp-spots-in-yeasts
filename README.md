@@ -32,12 +32,12 @@ Required packages in your environment:
 - If you want to use the batch mode, you must use `.tif` images.
 
 The two following images are the __brightfield__ and __yfp__ channels of the same image:
-[!Brightfield](https://dev.mri.cnrs.fr/attachments/download/3017/bf.png)
-[!YFP](https://dev.mri.cnrs.fr/attachments/download/3018/fluo.png)
+![Brightfield](https://dev.mri.cnrs.fr/attachments/download/3017/bf.png)
+![YFP](https://dev.mri.cnrs.fr/attachments/download/3018/fluo.png)
 
 The following images are the __cells labels__ and the __spots positions__:
-[!Labeled cells](https://dev.mri.cnrs.fr/attachments/download/3016/cells.png)
-[!Detected spots](https://dev.mri.cnrs.fr/attachments/download/3019/spots.png)
+![Labeled cells](https://dev.mri.cnrs.fr/attachments/download/3016/cells.png)
+![Detected spots](https://dev.mri.cnrs.fr/attachments/download/3019/spots.png)
 
 ## Usage
 
