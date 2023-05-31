@@ -1,5 +1,5 @@
 import napari
-from tifffile import imread
+from tifffile import imread, imsave
 import numpy as np
 from magicgui import magicgui, widgets
 from pathlib import Path
@@ -10,8 +10,10 @@ import tempfile
 import time
 import subprocess
 import platform
-
-from spotsInYeasts.spotsInYeasts import segment_transmission, create_random_lut, segment_spots, estimateUniformity, associate_spots_yeasts
+from qtpy.QtWidgets import QToolBar, QWidget
+from napari.qt.threading import thread_worker, create_worker
+from napari.utils import progress
+from spotsInYeasts.spotsInYeasts import segment_transmission, create_random_lut, segment_spots, estimateUniformity, associate_spots_yeasts, create_reference
 
 
 _state_ = None
@@ -31,6 +33,7 @@ def clear_layers_gui():
     _state_.current_viewer().layers.clear()
     _state_.reset_current()
     _state_.clear_data()
+    return True
 
 
 @magicgui(call_button="Split channels")
@@ -47,7 +50,7 @@ def split_channels_gui():
     # (2, 2048, 2048)
     # (9, 2, 2048, 2048)
 
-    imIn = _state_.get_image("_temp_")
+    imIn = _state_.get_image("_temp_") if _state_.is_batch() else _state_.current_viewer().layers[0].data
     imSp = imIn.shape
 
     if len(imSp) not in [3, 4]:
@@ -115,7 +118,7 @@ def segment_fluo_gui():
         return False
 
     start = time.time()
-    spots_locations, labeled_spots, yfp = segment_spots(_state_.get_image(_yfp))
+    spots_locations, labeled_spots, yfp = segment_spots(_state_.get_image(_yfp), _state_.get_image(_lbl_c))
     _state_.set_image(_yfp, yfp)
 
     # Checking whether the distribution is uniform or not.
@@ -142,11 +145,11 @@ def extract_stats_gui():
 
     if not _state_.required_key(_lbl_c):
         print(colored("Cells segmentation not available yet.", 'yellow'))
-        return
+        return False
 
     if not _state_.required_key(_lbl_s):
         print(colored("Spots segmentation not available yet.", 'yellow'))
-        return
+        return False
 
     labeled_cells = _state_.get_image(_lbl_c)
     yfp_original  = _state_.get_image(_yfp)
@@ -154,10 +157,14 @@ def extract_stats_gui():
     ownership     = associate_spots_yeasts(labeled_cells, labeled_spots, yfp_original)
 
     measures_path = os.path.join(_state_.get_export_path(), _state_.get_current_name()+".json")
-    with open(measures_path, 'w') as measures_file:
-        json.dump(ownership, measures_file)
-        measures_file.close()
-
+    try:
+        with open(measures_path, 'w') as measures_file:
+            json.dump(ownership, measures_file, indent=2)
+    except:
+        print(colored("Failed to export measures to: ", 'red'), end="")
+        print(colored(measures_path,'red', attrs=['underline']))
+        return False
+    else:
         print(colored("Spots exported to: ", 'green'), end="")
         print(colored(measures_path,'green', attrs=['underline']))
 
@@ -169,6 +176,42 @@ def extract_stats_gui():
             else:  # linux variants
                 subprocess.call(('xdg-open', measures_path))
 
+    return True
+
+
+def batch_folder_worker(input_folder, output_folder, nElements):
+    global _state_
+    
+    exec_start = time.time()
+    iteration = 0
+
+    while _state_.next_item():
+        go = _state_.load()
+        if go:
+            print(colored(f"\n============ Working on: {_state_.get_current_name()} ({iteration+1}/{nElements})============", 'green'))
+            go = split_channels_gui()
+        if go:
+            go = segment_brightfield_gui()
+        if go:
+            go = segment_fluo_gui()
+        if go:
+            go = extract_stats_gui()
+        if go:
+            ref = create_reference(_state_.get_spots(), _state_.get_image(_lbl_c), _state_.get_image(_bf), _state_.marker_path())
+            imsave(os.path.join(_state_.get_export_path(), _state_.get_current_name()+".tif"), ref)
+        
+        yield iteration
+        iteration += 1
+
+        if not _state_.current_viewer().window._qt_window.isVisible():
+            print(colored("\n========= INTERRUPTED. =========\n", 'red', attrs=['bold']))
+            return
+
+    _state_.set_batch(False)
+    print(colored(f"\n========= DONE. ({round(time.time()-exec_start, 1)}s) =========\n", 'green', attrs=['bold']))
+
+    return True
+
 
 @magicgui(
     input_folder = {'mode': 'd'},
@@ -178,7 +221,6 @@ def extract_stats_gui():
 def batch_folder_gui(input_folder: Path=Path.home(), output_folder: Path=Path.home()):
     global _state_
     _state_.set_batch(True)
-    exec_start = time.time()
     
     _state_.set_export_path(str(output_folder))
     path = str(input_folder)
@@ -191,18 +233,8 @@ def batch_folder_gui(input_folder: Path=Path.home(), output_folder: Path=Path.ho
         print(colored(f"Can't work on {path}", 'red'))
         return False
     
-    while _state_.next_item():
-        _state_.load()
-        split_channels_gui()
-        segment_brightfield_gui()
-        segment_fluo_gui()
-        extract_stats_gui()
-    
-    print(colored(f"\n========= DONE. ({round(time.time()-exec_start, 1)}s) =========\n", 'green', attrs=['bold']))
-    _state_.set_batch(False)
-
-    return True
-
+    worker = create_worker(batch_folder_worker, input_folder, output_folder, nElements, _progress={'total': nElements})
+    worker.start()
 
 class State(object):
 
@@ -226,6 +258,8 @@ class State(object):
         # Display name used for the current image
         self.name = ""
         # Side dock containing the plugin.
+        toolbar = QToolBar()
+        toolbar.addSeparator()
         self.dock    = self.viewer.window.add_dock_widget(
             [
                 clear_layers_gui,
@@ -233,12 +267,16 @@ class State(object):
                 segment_brightfield_gui,
                 segment_fluo_gui,
                 extract_stats_gui,
+                toolbar,
                 batch_folder_gui
             ], 
             name="Spots In Yeasts")
     
     def is_batch(self):
         return self.batch
+
+    def total_item(self):
+        return len(self.queue)
 
     def set_batch(self, val):
         self.batch = val
@@ -277,7 +315,7 @@ class State(object):
             )
     
     def get_image(self, key):
-        return self.images[key]
+        return self.images.get(key)
 
     def required_key(self, key):
         return key in self.images
@@ -335,8 +373,6 @@ class State(object):
             print(colored(f"Failed to open: `{str(self.current)}`.", 'red'))
             return False
 
-        print(colored(f"\n============ Working on: {self.get_current_name()} ============", 'green'))
-
         self.set_image('_temp_', hyperstack)
 
         return True
@@ -347,6 +383,10 @@ class State(object):
     def set_path(self, path):
         self.path    = str(path)
         self._init_queue_()
+
+    def marker_path(self):
+        p = Path(__file__)
+        return p.parent / "utils" / "marker.pgm"
 
     def _init_queue_(self):
         if os.path.isdir(self.path):
@@ -360,23 +400,6 @@ class State(object):
 
 _state_ = State()
 
-# start the event loop and show the viewer
+
 napari.run()
 
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#
-#                              TO DO
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#
-# - [ ] We would like to be able to remove labels by clicking in the viewer.
-# - [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
-# - [ ] Move the execution in another thread to avoid the GUI freezing.
-# - [ ] Add settings for spots detection.
-# - [ ] Try to make a cleaner GUI.
-# - [ ] Use a threshold on the number of spots to detect dead cells.
-# - [ ] FWrite a Fiji macro to perform the conversion: ".nd" ---> ".tif".
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

@@ -1,12 +1,9 @@
-from examples.segment_transmission_test import launch_test_transmission
-from examples.segment_spots_test import launch_test_fluo
-from examples.assembled_test import launch_assembled_test, make_histograms
+from spotsInYeasts.makeStats import make_histograms
 from testing.testing import *
-
 import sys
 
 def main(argv):
-    warning = "Expected arguments: transmission, fluo, utests, assembled, stats"
+    warning = "Expected arguments: utests, stats"
     if len(argv) <= 1:
         print(warning)
         return 0

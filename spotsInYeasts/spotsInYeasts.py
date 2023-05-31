@@ -1,24 +1,16 @@
-import numpy as np
-from skimage.io import imsave, imread, imshow, ImageCollection
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-from scipy.ndimage import median_filter, distance_transform_edt, center_of_mass, label
-from skimage.measure import regionprops
-from skimage.feature import peak_local_max
-import time, os, sys
-from urllib.parse import urlparse
-import cv2
-from scipy.ndimage import gaussian_laplace
-from skimage.filters import threshold_otsu, threshold_isodata
+from skimage.io import imread
+from skimage.filters import threshold_isodata
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
-from termcolor import colored
-
+from skimage.measure import regionprops
+from skimage.feature import peak_local_max
+from matplotlib.colors import LinearSegmentedColormap
+from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_edt, label
 from cellpose import models, utils, io
-import glob
-import fnmatch
-import argparse
-import random
+from termcolor import colored
+import os, cv2
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def create_random_lut(raw=False):
@@ -29,7 +21,7 @@ def create_random_lut(raw=False):
     Returns:
         A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
     """
-    lut    = np.random.uniform(0.0, 1.0, (256, 3))
+    lut    = np.random.uniform(0.01, 1.0, (256, 3))
     lut[0] = (0.0, 0.0, 0.0)
     return lut if raw else LinearSegmentedColormap.from_list('random_lut', lut)
 
@@ -187,7 +179,7 @@ def segment_transmission(stack, gpu=True):
 #################################################################################
 
 
-def segment_spots(stack):
+def segment_spots(stack, labeled_cells=None):
     """
     Args:
         stack: A numpy array representing the fluo channel
@@ -226,7 +218,14 @@ def segment_spots(stack):
     asf     = mask.astype(np.float64)
     chamfer = distance_transform_edt(asf)
     maximas = peak_local_max(chamfer, min_distance=6)
-    print(f"{len(maximas)} spots found before filtering.")
+
+    if labeled_cells is not None:
+        clean_points = []
+        for l, c in maximas:
+            if labeled_cells[l, c] > 0:
+                clean_points.append((l, c))
+        maximas = np.array(clean_points)
+    print(f"{len(maximas)} spots found.")
 
     # >>> Isolating instances of spots
     m_shape   = mask.shape[0:2]
@@ -249,6 +248,9 @@ def estimateUniformity(points, shape, gridSize=50):
     Returns:
         A tuple containing the chi-squared sum and the number of degrees of freedom.
     """
+    if len(points) <= 0:
+        return (0, 0)
+
     grid = [0 for i in range(gridSize*gridSize)]
 
     for (l, c) in points:
@@ -304,9 +306,41 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
         
         true_spots.append((r, c))
     
-    print(f"{len(true_spots)} spots still valid after filtering.")
     removed_mask = np.isin(labeled_spots, removed)
     labeled_spots[removed_mask] = 0
 
     return ownership
 
+
+def place_marker_visual(canvas, marker, l, c, val):
+    height, width = canvas.shape
+    mH, mW = marker.shape
+    l -= int(mH/2)
+    c -= int(mW/2)
+
+    for y in range(mH):
+        for x in range(mW):
+            p_y = l+y
+            p_x = c+x
+            if (p_y >= height) or (p_x >= width):
+                continue
+            if canvas[l+y, c+x] or marker[y, x]:
+                canvas[l+y, c+x] = val
+
+def place_markers_visual(points_list, canvas, marker, val):
+    for (l, c) in points_list:
+        place_marker_visual(canvas, marker, l, c, val)
+
+
+def create_reference(spots_list, labeled_cells, brightfield, marker_path):
+    # [RED]: Location of spots
+    marker = imread(marker_path)
+    canvas = np.zeros(brightfield.shape, dtype=brightfield.dtype)
+    place_markers_visual(spots_list, canvas, marker, np.iinfo(brightfield.dtype).max)
+
+    # [GREEN]: Segmented cells outlines
+    outlines = (make_outlines(labeled_cells) * np.iinfo(brightfield.dtype).max).astype(brightfield.dtype)
+
+    # [BLUE]: Original brightfield
+
+    return np.stack([canvas, outlines, brightfield], axis=-1)
