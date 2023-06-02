@@ -6,11 +6,11 @@ from skimage.measure import regionprops
 from skimage.feature import peak_local_max
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_edt, label
-from cellpose import models, utils, io
 from termcolor import colored
-import os, cv2
+import os, cv2, shutil
 import matplotlib.pyplot as plt
 import numpy as np
+from cellpose import models, utils, io
 
 
 def create_random_lut(raw=False):
@@ -47,6 +47,7 @@ def find_focused_slice(stack, around=2):
     """
     Determines which is the slice with the best focus, and pick a range of slices around it.
     The process is based on the variance recorded on each slice.
+    Displays a warning if the number of slices is not sufficient.
 
     Returns:
         A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
@@ -331,16 +332,25 @@ def place_markers_visual(points_list, canvas, marker, val):
     for (l, c) in points_list:
         place_marker_visual(canvas, marker, l, c, val)
 
+def prepare_directory(path):
+    if os.path.exists(path):
+        # Empty the folder
+        for filename in os.listdir(path):
+            file_path = os.path.join(path, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
+    else:
+        # Create the folder
+        os.makedirs(path)
 
-def create_reference(spots_list, labeled_cells, brightfield, marker_path):
-    # [RED]: Location of spots
-    marker = imread(marker_path)
-    canvas = np.zeros(brightfield.shape, dtype=brightfield.dtype)
-    place_markers_visual(spots_list, canvas, marker, np.iinfo(brightfield.dtype).max)
+def create_reference(labeled_cells, labeled_spots, spots_list, name, export_path, source_path):
+    control_dir_path = os.path.join(export_path, name+".ysc")
+    prepare_directory(control_dir_path)
 
-    # [GREEN]: Segmented cells outlines
-    outlines = (make_outlines(labeled_cells) * np.iinfo(brightfield.dtype).max).astype(brightfield.dtype)
-
-    # [BLUE]: Original brightfield
-
-    return np.stack([canvas, outlines, brightfield], axis=-1)
+    # Create outlines of cells
+    outlines = make_outlines(labeled_cells)

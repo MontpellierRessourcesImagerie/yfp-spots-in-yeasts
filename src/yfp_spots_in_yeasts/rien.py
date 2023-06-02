@@ -1,0 +1,3 @@
+
+def rien():
+    print("rien")

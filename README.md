@@ -1,4 +1,18 @@
-# YFP spots in yeasts
+# yfp-spots-in-yeasts
+
+[![License MIT](https://img.shields.io/pypi/l/yfp-spots-in-yeasts.svg?color=green)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/yfp-spots-in-yeasts.svg?color=green)](https://pypi.org/project/yfp-spots-in-yeasts)
+[![Python Version](https://img.shields.io/pypi/pyversions/yfp-spots-in-yeasts.svg?color=green)](https://python.org)
+[![tests](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/workflows/tests/badge.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/actions)
+[![codecov](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/branch/main/graph/badge.svg)](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/yfp-spots-in-yeasts)](https://napari-hub.org/plugins/yfp-spots-in-yeasts)
+
+A Napari plugin segmenting yeast cells and YFP spots to extract statistics.
+
+----------------------------------
+
+This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
+
 
 ## Introduction
 
@@ -24,6 +38,20 @@ Required packages in your environment:
 - `termcolor`
 - `matplotlib`
 - `cv2`
+
+
+## Installation
+
+You can install `yfp-spots-in-yeasts` via [pip]:
+
+    pip install yfp-spots-in-yeasts
+
+
+
+To install latest development version :
+
+    pip install git+https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts.git
+
 
 ## Example
 
@@ -71,7 +99,7 @@ __Note:__ In batch mode, your viewer won't show anything. You must rely on the t
 - `Selected slices: (4, 8). (11 slices available)`: The script doesn't use all the slices in the image. Instead, it detects the most is-focus slice and takes N slices before and after it. In this example, 11 slices were available in the image. We are using the slices 4, 5, 6, 7, 8 for processing, so the most in-focus one is the 6th.
 - `Segmenting cells...`: Notification that the script started segmenting yeasts cells.
 - `Cells segmentation done. 219 cells found.`: End of cells segmentation. This message also provides you with the number of indiviual detected. This number is displayed before labels touching the borders are removed.
-- `Segmented cells from `d1-230421-11S_2` in 10.0s.`: Operations are timed. This is just the time report of cells segmentation.
+- `Segmented cells from d1-230421-11S_2 in 10.0s.`: Operations are timed. This is just the time report of cells segmentation.
 - `Starting spots segmentation...`: Notification that the script started segmenting spots in the fluo channel.
 - `102 spots found .`: Number of spots detected during the segmentation.
 - `Segmented spots from d1-230421-11S_2 in 1.0s.`: Duration elapsed during spots segmentation.
@@ -80,7 +108,22 @@ __Note:__ In batch mode, your viewer won't show anything. You must rely on the t
 - `The image d1-230421 BG- failed to be processed.`: A basic sanity check is applied to the results before they get exported to reduce the amount of manual checking to perform. This message simply means that either the cells segmentation, or the spots segmentation is so bad that this image will be skipped.
 - `========= DONE. (288.0s) =========`: Indicates that all the images contained in your folder were processed, the batch is over. The total amount of time if also displayed.
 
----
+----------------------------------
+
+## Contributing
+
+Contributions are very welcome. Tests can be run with [tox], please ensure
+the coverage at least stays the same before you submit a pull request.
+
+## License
+
+Distributed under the terms of the [MIT] license,
+"yfp-spots-in-yeasts" is free and open source software
+
+## Issues
+
+If you encounter any problems, please [file an issue] along with a detailed description.
+
 
 ## TODO
 
@@ -106,3 +149,25 @@ __Note:__ In batch mode, your viewer won't show anything. You must rely on the t
 - [ ] Add a button to load the original image when a control image is opened.
 - [ ] Make a better control system with hooks and custom files.
 - [ ] Detect and merge mother+daughter yeasts.
+
+
+
+
+
+[napari]: https://github.com/napari/napari
+[Cookiecutter]: https://github.com/audreyr/cookiecutter
+[@napari]: https://github.com/napari
+[MIT]: http://opensource.org/licenses/MIT
+[BSD-3]: http://opensource.org/licenses/BSD-3-Clause
+[GNU GPL v3.0]: http://www.gnu.org/licenses/gpl-3.0.txt
+[GNU LGPL v3.0]: http://www.gnu.org/licenses/lgpl-3.0.txt
+[Apache Software License 2.0]: http://www.apache.org/licenses/LICENSE-2.0
+[Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
+[cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
+
+[file an issue]: https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/issues
+
+[napari]: https://github.com/napari/napari
+[tox]: https://tox.readthedocs.io/en/latest/
+[pip]: https://pypi.org/project/pip/
+[PyPI]: https://pypi.org/
