@@ -11,7 +11,7 @@ A Napari plugin segmenting yeast cells and YFP spots to extract statistics.
 
 ----------------------------------
 
-This [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
+The skeleton on this [napari] plugin was generated with [Cookiecutter] using [@napari]'s [cookiecutter-napari-plugin] template.
 
 
 ## Introduction
