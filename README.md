@@ -1,10 +1,10 @@
 # yfp-spots-in-yeasts
 
-[![License MIT](https://img.shields.io/pypi/l/yfp-spots-in-yeasts.svg?color=green)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/main/LICENSE)
+[![License MIT](https://img.shields.io/pypi/l/yfp-spots-in-yeasts.svg?color=green)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/yfp-spots-in-yeasts.svg?color=green)](https://pypi.org/project/yfp-spots-in-yeasts)
 [![Python Version](https://img.shields.io/pypi/pyversions/yfp-spots-in-yeasts.svg?color=green)](https://python.org)
 [![tests](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/workflows/tests/badge.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/actions)
-[![codecov](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/branch/main/graph/badge.svg)](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts)
+[![codecov](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/branch/master/graph/badge.svg)](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/yfp-spots-in-yeasts)](https://napari-hub.org/plugins/yfp-spots-in-yeasts)
 
 A Napari plugin segmenting yeast cells and YFP spots to extract statistics.
