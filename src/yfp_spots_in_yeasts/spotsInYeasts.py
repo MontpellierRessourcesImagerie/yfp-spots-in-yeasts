@@ -1,4 +1,4 @@
-from skimage.io import imread
+from skimage.io import imread, imsave
 from skimage.filters import threshold_isodata
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
@@ -11,6 +11,8 @@ import os, cv2, shutil
 import matplotlib.pyplot as plt
 import numpy as np
 from cellpose import models, utils, io
+from datetime import datetime
+from skimage import exposure
 
 
 def create_random_lut(raw=False):
@@ -19,14 +21,14 @@ def create_random_lut(raw=False):
     Black is reserved for the background.
 
     Returns:
-        A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
+        np.array: A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
     """
     lut    = np.random.uniform(0.01, 1.0, (256, 3))
     lut[0] = (0.0, 0.0, 0.0)
     return lut if raw else LinearSegmentedColormap.from_list('random_lut', lut)
 
 
-def make_outlines(labeled_cells, thickness=3):
+def make_outlines(labeled_cells, thickness=2):
     """
     Turns a labeled image into a mask showing the outline of each label.
     The resulting image is boolean.
@@ -36,7 +38,7 @@ def make_outlines(labeled_cells, thickness=3):
         thickness: The desired thickness of outlines.
     
     Returns:
-        A mask representing outlines of cells.
+        image: A mask representing outlines of cells.
     """
     selem   = disk(thickness)
     dilated = dilation(labeled_cells, selem) - labeled_cells
@@ -49,12 +51,13 @@ def find_focused_slice(stack, around=2):
     The process is based on the variance recorded on each slice.
     Displays a warning if the number of slices is not sufficient.
 
-    Returns:
-        A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
-
     Args:
         stack: (image stack) The stack in which we search the focused area.
         around: (int) Number of slices to select around the most in-focus one.
+
+    Returns:
+        (int, int): A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
+
     """
     # If we don't have a stack, we just return a tuple filled with zeros.
     if len(stack.shape) < 3:
@@ -91,6 +94,15 @@ def segment_yeasts_cells(transmission, gpu=True):
     masks, flows, styles, diams = model.eval(transmission, diameter=None, channels=chan)
 
     return masks
+
+
+# For display
+def enhance_contrast(image, percentile=0.1):
+    # calculate the percentiles
+    vmin, vmax = np.percentile(image, [percentile, 100 - percentile])
+    # use skimage's rescale_intensity to stretch the intensity range
+    enhanced = exposure.rescale_intensity(image, in_range=(vmin, vmax))
+    return enhanced
 
 
 def increase_contrast(image, targetType=np.uint16):
@@ -348,9 +360,42 @@ def prepare_directory(path):
         # Create the folder
         os.makedirs(path)
 
-def create_reference(labeled_cells, labeled_spots, spots_list, name, export_path, source_path):
-    control_dir_path = os.path.join(export_path, name+".ysc")
-    prepare_directory(control_dir_path)
+def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots):
+    present = datetime.now()
 
-    # Create outlines of cells
+    # Export projections.
+    imsave(
+        os.path.join(control_dir_path, name+"_bf.tif"),
+        projection_cells)
+    imsave(
+        os.path.join(control_dir_path, name+"_fluo.tif"),
+        enhance_contrast(projection_spots, 0.001))
+
+    # Create outlines of cells, save them along labeled cells.
     outlines = make_outlines(labeled_cells)
+    imsave(
+        os.path.join(control_dir_path, name+"_outlines.tif"),
+        outlines)
+    imsave(
+        os.path.join(control_dir_path, name+"_cells.tif"),
+        labeled_cells)
+
+    # Create the CSV with spots list, save it along segmented spots
+    np.savetxt(
+        os.path.join(control_dir_path, name+".csv"),
+        spots_list,
+        delimiter=',',
+        header="axis-0, axis-1")
+    imsave(
+        os.path.join(control_dir_path, name+"_spots.tif"),
+        labeled_spots)
+
+    # Saving the index to read the folder
+    f = open(os.path.join(control_dir_path, "index.txt"), 'w')
+    f.write("name\n")
+    f.write(name+"\n")
+    f.write("sources\n")
+    f.write(source_path+"\n")
+    f.write("time\n")
+    f.write(present.strftime("%d/%B/%Y (%H:%M:%S)")+"\n")
+    f.close()

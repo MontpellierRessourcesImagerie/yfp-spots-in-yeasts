@@ -1,3 +1,0 @@
-
-def rien():
-    print("rien")

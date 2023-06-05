@@ -14,13 +14,13 @@ from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
 import sys
-from yfp_spots_in_yeasts.spotsInYeasts import segment_transmission, create_random_lut, segment_spots, estimateUniformity, associate_spots_yeasts, create_reference_to
+from yfp_spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimateUniformity, associate_spots_yeasts, create_reference_to, prepare_directory
 
-_bf     = "brightfield"
-_yfp    = "yfp"
-_lbl_c  = "labeled-cells"
-_lbl_s  = "labeled-spots"
-_spots  = "spots-positions"
+_bf    = "brightfield"
+_yfp   = "yfp"
+_lbl_c = "labeled-cells"
+_lbl_s = "labeled-spots"
+_spots = "spots-positions"
 
 @magicclass
 class SpotsInYeastsDock:
@@ -70,7 +70,7 @@ class SpotsInYeastsDock:
     def _get_spots(self):
         return self.spots_data
 
-    def _set_image(self, key, data, args={}):
+    def _set_image(self, key, data, args={}, aslabels=False):
         self.images[key] = data
         
         if self.batch:
@@ -79,10 +79,16 @@ class SpotsInYeastsDock:
         if key in self._current_viewer().layers:
             self._current_viewer().layers[key].data = data
         else:
-            self._current_viewer().add_image(
-                data,
-                name=key,
-                **args)
+            if aslabels:
+                self._current_viewer().add_labels(
+                    data,
+                    name=key,
+                    **args)
+            else:
+                self._current_viewer().add_image(
+                    data,
+                    name=key,
+                    **args)
     
     def _get_image(self, key):
         return self.images.get(key)
@@ -91,7 +97,7 @@ class SpotsInYeastsDock:
         return key in self.images
 
     def _get_export_path(self):
-        return self.e_path
+        return os.path.join(self.e_path, self._get_current_name()+".ysc")
 
     def _set_export_path(self, path):
         d_path = str(path)
@@ -130,6 +136,7 @@ class SpotsInYeastsDock:
             if os.path.isfile(item):
                 self.current = item
                 self._set_current_name(item.split(os.sep)[-1].split('.')[0])
+                prepare_directory(self._get_export_path())
                 return True
         
         return False
@@ -236,13 +243,11 @@ class SpotsInYeastsDock:
         start = time.time()
         labeled, projection = segment_transmission(self._get_image(_bf), True)
         
-        random_lut = create_random_lut(True)
         self._set_image(_bf, projection) # _current_viewer().layers[_bf].data = projection
         self._set_image(_lbl_c, labeled, {
-            'blending': "additive", 
-            'rgb'     : False, 
-            'colormap': random_lut
-        })
+            'blending': "additive"
+        },
+        True)
         
         print(colored(f"Segmented cells from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
         return True
@@ -267,12 +272,11 @@ class SpotsInYeastsDock:
             print(colored(f"The image `{self._get_current_name()}` failed to be processed.", 'red'))
             return False
         
-        random_lut = create_random_lut(True)
         self._set_spots(spots_locations)
         self._set_image(_lbl_s, labeled_spots, {
-            'visible' : False, 
-            'colormap': random_lut
-        })
+            'visible' : False
+        },
+        True)
         
         print(colored(f"Segmented spots from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
         return True
@@ -293,6 +297,9 @@ class SpotsInYeastsDock:
         yfp_original  = self._get_image(_yfp)
         labeled_spots = self._get_image(_lbl_s)
         ownership     = associate_spots_yeasts(labeled_cells, labeled_spots, yfp_original)
+
+        if not os.path.isdir(self._get_export_path()):
+            prepare_directory(self._get_export_path())
 
         measures_path = os.path.join(self._get_export_path(), self._get_current_name()+".json")
         try:
@@ -342,7 +349,9 @@ class SpotsInYeastsDock:
                     self._get_spots(),
                     self._get_current_name(),
                     self._get_export_path(),
-                    self._get_path())
+                    self._get_path(),
+                    self._get_image(_bf),
+                    self._get_image(_yfp))
             
             yield iteration
             iteration += 1
@@ -356,6 +365,12 @@ class SpotsInYeastsDock:
 
         return True
 
+    def _reset_all(self):
+        self.clear_layers_gui()
+        self.queue = []
+        self.current = None
+
+
 
     @magicgui(
         input_folder = {'mode': 'd'},
@@ -363,9 +378,8 @@ class SpotsInYeastsDock:
         call_button  = "Run batch"
     )
     def batch_folder_gui(self, input_folder: Path=Path.home(), output_folder: Path=Path.home()):
-        
+        self._reset_all()
         self._set_batch(True)
-        
         self._set_export_path(str(output_folder))
         path = str(input_folder)
         self.clear_layers_gui()
@@ -377,5 +391,5 @@ class SpotsInYeastsDock:
             print(colored(f"Can't work on {path}", 'red'))
             return False
         
-        worker = create_worker(self.batch_folder_worker, input_folder, output_folder, nElements, _progress={'total': nElements})
+        worker = create_worker(self._batch_folder_worker, input_folder, output_folder, nElements, _progress={'total': nElements})
         worker.start()
