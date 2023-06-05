@@ -1,6 +1,6 @@
 # yfp-spots-in-yeasts
 
-[![License MIT](https://img.shields.io/pypi/l/yfp-spots-in-yeasts.svg?color=green)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/master/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/master/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/yfp-spots-in-yeasts.svg?color=green)](https://pypi.org/project/yfp-spots-in-yeasts)
 [![Python Version](https://img.shields.io/pypi/pyversions/yfp-spots-in-yeasts.svg?color=green)](https://python.org)
 [![tests](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/workflows/tests/badge.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/actions)
