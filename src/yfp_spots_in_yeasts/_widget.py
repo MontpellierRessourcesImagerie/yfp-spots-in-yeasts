@@ -1,3 +1,4 @@
+import napari
 from tifffile import imread, imsave
 import numpy as np
 from magicgui import magicgui, widgets
@@ -14,7 +15,7 @@ from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
 import sys
-from yfp_spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimateUniformity, associate_spots_yeasts, create_reference_to, prepare_directory
+from yfp_spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
 
 _bf    = "brightfield"
 _yfp   = "yfp"
@@ -45,11 +46,27 @@ class SpotsInYeastsDock:
         self.viewer = napari_viewer
         # Display name used for the current image
         self.name = ""
+
+    def _clear_state(self):
+        self.images = {}
+        self.spots_data = None
+        self.batch = False
+        self.queue = []
+        self.e_path = tempfile.gettempdir()
+        self.current = None
+        self.path = None
+        self.name = ""
+
+        self.clear_layers_gui()
         
     def _is_batch(self):
         return self.batch
     
     def _set_batch(self, val):
+        if val:
+            print("Running in batch mode.")
+        else:
+            print("End of batch mode.")
         self.batch = val
 
     def _clear_data(self):
@@ -150,7 +167,8 @@ class SpotsInYeastsDock:
             print(colored(f"Failed to open: `{str(self.current)}`.", 'red'))
             return False
 
-        self._set_image('_temp_', hyperstack)
+        self._set_image(self._get_current_name(), hyperstack)
+        print(colored(f"\n===== Currently working on: {self._get_current_name()} =====", 'green', attrs=['bold']))
 
         return True
 
@@ -192,13 +210,13 @@ class SpotsInYeastsDock:
 
         if not self._is_batch():
             if nImages != 1:
-                print(colored("Only one image must be loaded at a time.", 'red'))
+                print(colored(f"Excatly one image must be loaded at a time. (found {nImages})", 'red'))
                 return False
 
         # (2, 2048, 2048)
         # (9, 2, 2048, 2048)
 
-        imIn = self._get_image("_temp_") if self._is_batch() else self._current_viewer().layers[0].data
+        imIn = self._get_image(self._get_current_name()) if self._is_batch() else self._current_viewer().layers[0].data
         imSp = imIn.shape
 
         if len(imSp) not in [3, 4]:
@@ -209,7 +227,7 @@ class SpotsInYeastsDock:
         nChannels = imSp[axis]
 
         if nChannels != 2:
-            print(colored(f"Only 2 channels are expected. {nChannels} found.", 'red'))
+            print(colored(f"Exactly 2 channels are expected. {nChannels} found.", 'red'))
             return False
         
         if not self._is_batch():
@@ -267,9 +285,8 @@ class SpotsInYeastsDock:
 
         # Checking whether the distribution is uniform or not.
         # We consider that the segmentation has failed if it is uniform.
-        ttl, ref = estimateUniformity(spots_locations, labeled_spots.shape)
-        if ttl <= ref:
-            print(colored(f"The image `{self._get_current_name()}` failed to be processed.", 'red'))
+        unif = estimate_uniformity(spots_locations, labeled_spots.shape)
+        if unif:
             return False
         
         self._set_spots(spots_locations)
@@ -330,19 +347,24 @@ class SpotsInYeastsDock:
         
         exec_start = time.time()
         iteration = 0
+        procedure = [
+            self._load,
+            self.split_channels_gui,
+            self.segment_brightfield_gui,
+            self.segment_fluo_gui,
+            self.extract_stats_gui
+        ]
 
         while self._next_item():
-            go = self._load()
-            if go:
-                print(colored(f"\n============ Working on: {self._get_current_name()} ({iteration+1}/{nElements})============", 'green'))
-                go = self.split_channels_gui()
-            if go:
-                go = self.segment_brightfield_gui()
-            if go:
-                go = self.segment_fluo_gui()
-            if go:
-                go = self.extract_stats_gui()
-            if go:
+            ok = True
+            for step in procedure:
+                ok = step() and ok
+                if not ok:
+                    print(colored("Failed to process: ", 'red'), end="")
+                    print(colored(self._get_current_name(), 'red', attrs=['underline']), end="")
+                    print(colored(".", 'red'))
+                    break
+            if ok:
                 create_reference_to(
                     self._get_image(_lbl_c), 
                     self._get_image(_lbl_s), 
@@ -355,22 +377,16 @@ class SpotsInYeastsDock:
             
             yield iteration
             iteration += 1
+            print(colored(f"{self._get_current_name()} processed. ({iteration}/{nElements})", 'green'))
 
             if not self._current_viewer().window._qt_window.isVisible():
                 print(colored("\n========= INTERRUPTED. =========\n", 'red', attrs=['bold']))
                 return
 
         self._set_batch(False)
-        print(colored(f"\n========= DONE. ({round(time.time()-exec_start, 1)}s) =========\n", 'green', attrs=['bold']))
-
+        print(colored(f"\n============= DONE. ({round(time.time()-exec_start, 1)}s) =============\n", 'green', attrs=['bold']))
+        self._clear_state()
         return True
-
-    def _reset_all(self):
-        self.clear_layers_gui()
-        self.queue = []
-        self.current = None
-
-
 
     @magicgui(
         input_folder = {'mode': 'd'},
@@ -378,7 +394,7 @@ class SpotsInYeastsDock:
         call_button  = "Run batch"
     )
     def batch_folder_gui(self, input_folder: Path=Path.home(), output_folder: Path=Path.home()):
-        self._reset_all()
+        self._clear_state()
         self._set_batch(True)
         self._set_export_path(str(output_folder))
         path = str(input_folder)
@@ -388,7 +404,7 @@ class SpotsInYeastsDock:
         nElements = len(self.queue)
 
         if nElements == 0:
-            print(colored(f"Can't work on {path}", 'red'))
+            print(colored(f"{path} doesn't contain any valid file.", 'red'))
             return False
         
         worker = create_worker(self._batch_folder_worker, input_folder, output_folder, nElements, _progress={'total': nElements})

@@ -104,7 +104,7 @@ __Note:__ In batch mode, your viewer won't show anything. You must rely on the t
 - `102 spots found .`: Number of spots detected during the segmentation.
 - `Segmented spots from d1-230421-11S_2 in 1.0s.`: Duration elapsed during spots segmentation.
 - `Spots exported to: /some/path/to/output/d1-230421-11S_2.json`: Path to the exported metrics.
-- `Not enough slices available!`: We don't use all the slices available. We detect the most in-focus one and take N slices before and after. This message means that there isn't N slices available after (or before) the most in-focus one. The process won't get interupted, but you want to be more careful about the segmentation of this image.
+- `Focused slice too far from center!`: We don't use all the slices available. We detect the most in-focus one and take N slices before and after. This message means that there isn't N slices available after (or before) the most in-focus one. The process won't get interupted, but you want to be more careful about the segmentation of this image.
 - `The image d1-230421 BG- failed to be processed.`: A basic sanity check is applied to the results before they get exported to reduce the amount of manual checking to perform. This message simply means that either the cells segmentation, or the spots segmentation is so bad that this image will be skipped.
 - `========= DONE. (288.0s) =========`: Indicates that all the images contained in your folder were processed, the batch is over. The total amount of time if also displayed.
 
@@ -127,10 +127,10 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 
 ## TODO
 
-- [ ] Browse all images to determine the optimal number of slices.
+- [X] Browse all images to determine the optimal number of slices.
 - [X] Determine an implementation to locate and isolate dead cells.
-- [ ] Write a clean README to help user install and use the script.
-- [ ] Transform the Napari script into a plugin.
+- [X] Write a clean README to help user install and use the script.
+- [X] Transform the Napari script into a plugin.
 - [X] Implement a GUI-less batch mode (that doesn't show images in the viewer)
 - [ ] Finish writing the unit tests.
 - [X] Move the execution in another thread to avoid the GUI freezing.
@@ -139,19 +139,20 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 - [ ] Use a threshold on the number of spots to detect dead cells.
 - [X] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".
 - [X] Create a control image at each iteration in batch mode.
-- [ ] Expose settings to: select the number of slices around focus.
+- [ ] Expose settings to: select the number of slices around focus, the size of spots.
 - [ ] Make sure the documentation can be generated with Sphinx.
+- [X] Create a reader to ease the controling process.
+- [X] Add a button to load the original image when a control image is opened.
 
 ## Future:
 
 - [ ] We would like to be able to remove labels by clicking in the viewer.
 - [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
-- [ ] Add a button to load the original image when a control image is opened.
-- [ ] Make a better control system with hooks and custom files.
 - [ ] Detect and merge mother+daughter yeasts.
-
-
-
+- [ ] Detect and merge cells cut into several labels.
+- [ ] Make a more elaborate GUI with raw Qt rather than magicgui.
+- [ ] Take into account the calibration of images.
+- [ ] Upload to PyPI
 
 
 [napari]: https://github.com/napari/napari

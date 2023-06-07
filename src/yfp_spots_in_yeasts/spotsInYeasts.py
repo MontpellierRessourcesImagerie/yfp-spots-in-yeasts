@@ -13,43 +13,42 @@ import numpy as np
 from cellpose import models, utils, io
 from datetime import datetime
 from skimage import exposure
+from scipy.stats import kstest
 
 
-def create_random_lut(raw=False):
+def create_random_lut():
     """
     Creates a random LUT of 256 slots to display labeled images with colors far apart from each other.
     Black is reserved for the background.
 
     Returns:
-        np.array: A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
+        LinearSegmentedColormap: A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`
     """
-    lut    = np.random.uniform(0.01, 1.0, (256, 3))
-    lut[0] = (0.0, 0.0, 0.0)
-    return lut if raw else LinearSegmentedColormap.from_list('random_lut', lut)
+    return LinearSegmentedColormap.from_list('random_lut', np.vstack((np.array([(0.0, 0.0, 0.0)]), np.random.uniform(0.01, 1.0, (255, 3)))))
 
 
 def make_outlines(labeled_cells, thickness=2):
     """
     Turns a labeled image into a mask showing the outline of each label.
-    The resulting image is boolean.
+    The resulting image is boolean. (==mask)
 
     Args:
         labeled_cells: The image containing labels.
         thickness: The desired thickness of outlines.
     
     Returns:
-        image: A mask representing outlines of cells.
+        numpy.array: A mask representing outlines of cells.
     """
-    selem   = disk(thickness)
-    dilated = dilation(labeled_cells, selem) - labeled_cells
+    dilated = dilation(labeled_cells, disk(thickness)) - labeled_cells
     return dilated > 0
 
 
 def find_focused_slice(stack, around=2):
     """
-    Determines which is the slice with the best focus, and pick a range of slices around it.
-    The process is based on the variance recorded on each slice.
-    Displays a warning if the number of slices is not sufficient.
+    Determines which slice has the best focus and selects a range of slices around it.
+    The process is based on the variance recorded for each slice.
+    Displays a warning if the number of slices is insufficient.
+    A safety check is performed to ensure that the returned indices are within the range of the stack's size.
 
     Args:
         stack: (image stack) The stack in which we search the focused area.
@@ -57,21 +56,20 @@ def find_focused_slice(stack, around=2):
 
     Returns:
         (int, int): A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
-
     """
     # If we don't have a stack, we just return a tuple filled with zeros.
     if len(stack.shape) < 3:
+        print("The image is a single slice, not a stack.")
         return (0, 0)
 
     nSlices, width, height = stack.shape
     maxSlice = np.argmax([cv2.Laplacian(stack[s], cv2.CV_64F).var() for s in range(nSlices)])
     selected = (max(0, maxSlice-around), min(nSlices-1, maxSlice+around))
     
-    print(f"Selected slices: {selected}. ({nSlices} slices available)")
+    print(f"Selected slices: ({selected[0]+1}, {selected[1]+1}). ({nSlices} slices available)")
     if selected[1]-selected[0] != 2*around:
-        print(colored("Not enough slices available!", 'yellow'))
+        print(colored("Focused slice too far from center!", 'yellow'))
 
-    # We make sure to stay in-bounds.
     return selected
 
 
@@ -87,22 +85,27 @@ def segment_yeasts_cells(transmission, gpu=True):
     Returns:
         (image) An image containing labels (one value == one individual).
     """
-    
     model = models.Cellpose(gpu=gpu, model_type='cyto')
     chan = [0, 0]
     print("Segmenting cells...")
     masks, flows, styles, diams = model.eval(transmission, diameter=None, channels=chan)
-
+    print("Cells segmentation done.")
     return masks
 
 
-# For display
-def enhance_contrast(image, percentile=0.1):
-    # calculate the percentiles
+def contrast_stretching(image, percentile=0.1):
+    """
+    Contrast stretching by skipping a certain percentile of the histogram before rescaling the values.
+
+    Args:
+        image: The original image
+        percentile: Percentile of values skipped on each side of the histogram.
+
+    Returns:
+        image: An image with contrast enhanced.
+    """
     vmin, vmax = np.percentile(image, [percentile, 100 - percentile])
-    # use skimage's rescale_intensity to stretch the intensity range
-    enhanced = exposure.rescale_intensity(image, in_range=(vmin, vmax))
-    return enhanced
+    return exposure.rescale_intensity(image, in_range=(vmin, vmax))
 
 
 def increase_contrast(image, targetType=np.uint16):
@@ -136,10 +139,9 @@ def place_markers(shp, m_list):
         m_list: A list of tuples representing 2D coordinates.
     """
     tmp = np.zeros(shp, dtype=np.uint16)
-
     for i, (l, c) in enumerate(m_list, start=1):
         tmp[l, c] = i
-    
+    print(f"{len(m_list)} markers placed.")
     return tmp
 
 
@@ -156,7 +158,6 @@ def segment_transmission(stack, gpu=True):
     Returns:
         A uint16 image containing labels. Each label corresponds to an instance of yeast cell.
     """
-
     # Boolean value determining if we want to use all the slices of the stack, or just the most in-focus.
     pick_slices   = True
     slices_around = 2
@@ -176,15 +177,16 @@ def segment_transmission(stack, gpu=True):
         max_proj = np.max(stack[in_focus[0]:in_focus[1]], axis=0)
         input_bf = max_proj
     else:
-        print("Image is a single slice.")
         input_bf = np.squeeze(stack)
     
     # >>> Labeling the transmission channel:
     labeled_transmission = segment_yeasts_cells(input_bf, gpu)
 
     # >>> Finding and removing the labels touching the borders:
-    cleared_bd = clear_border(labeled_transmission, buffer_size=3)
-    print(f"Cells segmentation done. {len(np.unique(cleared_bd))-1} cells found.")
+    nCellsBefore = len(np.unique(labeled_transmission))-1
+    cleared_bd   = clear_border(labeled_transmission, buffer_size=3)
+    nCellsAfter  = len(np.unique(cleared_bd))-1
+    print(colored(f"{nCellsBefore-nCellsAfter} cells discarded due to border. {nCellsAfter} cells remaining.", 'yellow'))
 
     return cleared_bd, input_bf
 
@@ -222,9 +224,9 @@ def segment_spots(stack, labeled_cells=None):
     input_yfp = median_filter(input_yfp, size=3)
 
     # >>> LoG filter + thresholding
-    asf = input_yfp.astype(np.float64)
-    LoG = gaussian_laplace(asf, sigma=3.0)
-    t = threshold_isodata(LoG)
+    asf  = input_yfp.astype(np.float64)
+    LoG  = gaussian_laplace(asf, sigma=3.0)
+    t    = threshold_isodata(LoG)
     mask = LoG < t
 
     # >>> Detection of spots location
@@ -249,35 +251,20 @@ def segment_spots(stack, labeled_cells=None):
     return maximas, lbd_spots, save_yfp
 
 
-def estimateUniformity(points, shape, gridSize=50):
-    """
-    Uses the chi-squared test to determine whether the distribution of detected spots is uniform.
-    If the distribution is uniform, we have a bad detection and the process should be aborted.
+def estimate_uniformity(pts, shape, pvalue=0.02):
+    if len(pts) <= 0:
+        return True
 
-    Args:
-        points: A list of 2D points
-        gridSize: The size of the grid used to quantify the uniformity of the distribution.
+    points = np.array(pts, dtype=np.float64) / max(shape[0], shape[1])
+    x, y = zip(*points)
+    xs = kstest(x, 'uniform')
+    ys = kstest(y, 'uniform')
+    is_unif = (xs.statistic < pvalue) and (ys.statistic < pvalue)
 
-    Returns:
-        A tuple containing the chi-squared sum and the number of degrees of freedom.
-    """
-    if len(points) <= 0:
-        return (0, 0)
+    if is_unif:
+        print("The spots are scattered following a uniform distribution.")
 
-    grid = [0 for i in range(gridSize*gridSize)]
-
-    for (l, c) in points:
-        x = int(gridSize * (l / float(shape[0])))
-        y = int(gridSize * (c / float(shape[1])))
-        grid[gridSize*y+x] += 1
-
-    total    = 0
-    expected = float(len(points)) / float(gridSize*gridSize)
-
-    for g in grid:
-        total += pow((g - expected), 2) / expected
-
-    return (total, gridSize*gridSize-1)
+    return is_unif
 
 
 def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
@@ -325,25 +312,6 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
     return ownership
 
 
-def place_marker_visual(canvas, marker, l, c, val):
-    height, width = canvas.shape
-    mH, mW = marker.shape
-    l -= int(mH/2)
-    c -= int(mW/2)
-
-    for y in range(mH):
-        for x in range(mW):
-            p_y = l+y
-            p_x = c+x
-            if (p_y >= height) or (p_x >= width):
-                continue
-            if canvas[l+y, c+x] or marker[y, x]:
-                canvas[l+y, c+x] = val
-
-def place_markers_visual(points_list, canvas, marker, val):
-    for (l, c) in points_list:
-        place_marker_visual(canvas, marker, l, c, val)
-
 def prepare_directory(path):
     if os.path.exists(path):
         # Empty the folder
@@ -369,7 +337,7 @@ def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_
         projection_cells)
     imsave(
         os.path.join(control_dir_path, name+"_fluo.tif"),
-        enhance_contrast(projection_spots, 0.001))
+        contrast_stretching(projection_spots, 0.001))
 
     # Create outlines of cells, save them along labeled cells.
     outlines = make_outlines(labeled_cells)
