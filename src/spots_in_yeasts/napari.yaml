@@ -1,17 +1,17 @@
-name: yfp-spots-in-yeasts
-display_name: YFP spots in yeasts
+name: spots-in-yeasts
+display_name: spots in yeasts
 contributions:
   commands:
-    - id: yfp-spots-in-yeasts.get_reader
-      python_name: yfp_spots_in_yeasts._reader:napari_get_reader
-      title: Open data with YFP spots in yeasts
-    - id: yfp-spots-in-yeasts.spots_in_yeasts
-      python_name: yfp_spots_in_yeasts._widget:SpotsInYeastsDock
+    - id: spots-in-yeasts.get_reader
+      python_name: spots_in_yeasts._reader:napari_get_reader
+      title: Open data with "Spots in yeasts"
+    - id: spots-in-yeasts.spots_in_yeasts
+      python_name: spots_in_yeasts._widget:SpotsInYeastsDock
       title: Spots In Yeasts
   readers:
-    - command: yfp-spots-in-yeasts.get_reader
+    - command: spots-in-yeasts.get_reader
       accepts_directories: true
       filename_patterns: ['*.ysc']
   widgets:
-    - command: yfp-spots-in-yeasts.spots_in_yeasts
+    - command: spots-in-yeasts.spots_in_yeasts
       display_name: Spots In Yeasts

@@ -1,6 +1,6 @@
 import pytest
 import napari
-from yfp_spots_in_yeasts._widget import SpotsInYeastsDock
+from spots_in_yeasts._widget import SpotsInYeastsDock
 import numpy as np
 from tifffile import imread
 import os

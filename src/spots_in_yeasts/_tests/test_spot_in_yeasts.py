@@ -2,7 +2,7 @@ import pytest
 import sys
 import os
 from tifffile import imread, imsave, imshow
-from yfp_spots_in_yeasts.spotsInYeasts import *
+from spots_in_yeasts.spotsInYeasts import *
 import matplotlib.pyplot as plt
 import numpy as np
 
