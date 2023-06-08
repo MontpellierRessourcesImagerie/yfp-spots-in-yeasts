@@ -5,7 +5,7 @@ from skimage.morphology import dilation, disk
 from skimage.measure import regionprops
 from skimage.feature import peak_local_max
 from matplotlib.colors import LinearSegmentedColormap
-from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_edt, label
+from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_cdt, label
 from termcolor import colored
 import os, cv2, shutil
 import matplotlib.pyplot as plt
@@ -66,7 +66,8 @@ def find_focused_slice(stack, around=2):
     maxSlice = np.argmax([cv2.Laplacian(stack[s], cv2.CV_64F).var() for s in range(nSlices)])
     selected = (max(0, maxSlice-around), min(nSlices-1, maxSlice+around))
     
-    print(f"Selected slices: ({selected[0]+1}, {selected[1]+1}). ({nSlices} slices available)")
+    print(f"Selected slices: ({selected[0]+1}, {selected[1]+1}). ", end="")
+    print(colored(f"({nSlices} slices available)", 'dark_grey'))
     if selected[1]-selected[0] != 2*around:
         print(colored("Focused slice too far from center!", 'yellow'))
 
@@ -207,32 +208,32 @@ def segment_spots(stack, labeled_cells=None):
          - locations: A list of 2D coordinates representing each spot.
     """
 
-    # >>> Opening YFP stack
+    # >>> Opening fluo spots stack
     stack_sz  = stack.shape
-    input_yfp = None
+    input_fSpots = None
 
     # >>> Max projection of the stack
     if len(stack_sz) > 2: # We have a stack, not a single image.
-        input_yfp = np.max(stack, axis=0)
+        input_fSpots = np.max(stack, axis=0)
     else:
-        input_yfp = np.squeeze(stack)
+        input_fSpots = np.squeeze(stack)
 
     # >>> Contrast augmentation + noise reduction
     print("Starting spots segmentation...")
-    save_yfp  = np.copy(input_yfp)
-    input_yfp = increase_contrast(input_yfp)
-    input_yfp = median_filter(input_yfp, size=3)
+    save_fSpots  = np.copy(input_fSpots)
+    input_fSpots = increase_contrast(input_fSpots)
+    input_fSpots = median_filter(input_fSpots, size=3)
 
     # >>> LoG filter + thresholding
-    asf  = input_yfp.astype(np.float64)
+    asf  = input_fSpots.astype(np.float64)
     LoG  = gaussian_laplace(asf, sigma=3.0)
     t    = threshold_isodata(LoG)
     mask = LoG < t
 
     # >>> Detection of spots location
     asf     = mask.astype(np.float64)
-    chamfer = distance_transform_edt(asf)
-    maximas = peak_local_max(chamfer, min_distance=6)
+    chamfer = distance_transform_cdt(asf)
+    maximas = peak_local_max(chamfer, min_distance=5)
 
     if labeled_cells is not None:
         clean_points = []
@@ -248,7 +249,7 @@ def segment_spots(stack, labeled_cells=None):
     lbd_spots = watershed(~mask, markers, mask=mask).astype(np.uint16)
 
     # >>> Returning the results
-    return maximas, lbd_spots, save_yfp
+    return maximas, lbd_spots, save_fSpots
 
 
 def estimate_uniformity(pts, shape, pvalue=0.02):
@@ -267,16 +268,15 @@ def estimate_uniformity(pts, shape, pvalue=0.02):
     return is_unif
 
 
-def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
+def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
     """
     Associates each spot with the label it belongs to.
     A safety check is performed to make sure no spot falls in the background.
 
     Args:
         labeled_cells: A single-channeled image with dtype=uint16 containing the segmented transmission image.
-        spots_list: A list a 2D tuples representing the centroids of detected spots.
-        original_yfp: The original image containing the YFP spots (before contrast enhancement).
-        mask: The first mask produced that partionates the space in "spot" or "background" but without find different instances.
+        labeled_spots: A labelised image representing spots
+        fluo_spots: The original fluo image containing spots.
 
     Returns:
         A dictionary in which keys are the labels of each cell. Each key points to a list of dictionary. Each element of the list corresponds to a spot.
@@ -285,7 +285,7 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, yfp):
     unique_values = np.unique(labeled_cells)
     ownership     = {int(u): [] for u in unique_values if (u > 0)}
 
-    spots_props = regionprops(labeled_spots, intensity_image=yfp)
+    spots_props = regionprops(labeled_spots, intensity_image=fluo_spots)
     removed     = []
     true_spots  = []
 
@@ -323,7 +323,7 @@ def prepare_directory(path):
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+                print(f"Failed to delete {file_path}. Reason: {e}")
     else:
         # Create the folder
         os.makedirs(path)

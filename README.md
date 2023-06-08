@@ -1,13 +1,13 @@
-# yfp-spots-in-yeasts
+# spots-in-yeasts
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/raw/master/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/yfp-spots-in-yeasts.svg?color=green)](https://pypi.org/project/yfp-spots-in-yeasts)
-[![Python Version](https://img.shields.io/pypi/pyversions/yfp-spots-in-yeasts.svg?color=green)](https://python.org)
-[![tests](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/workflows/tests/badge.svg)](https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/actions)
-[![codecov](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/branch/master/graph/badge.svg)](https://codecov.io/gh/MontpellierRessourcesImagerie/yfp-spots-in-yeasts)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/yfp-spots-in-yeasts)](https://napari-hub.org/plugins/yfp-spots-in-yeasts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts/raw/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/spots-in-yeasts.svg?color=green)](https://pypi.org/project/spots-in-yeasts)
+[![Python Version](https://img.shields.io/pypi/pyversions/spots-in-yeasts.svg?color=green)](https://python.org)
+[![tests](https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts/workflows/tests/badge.svg)](https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts/actions)
+[![codecov](https://codecov.io/gh/MontpellierRessourcesImagerie/spots-in-yeasts/branch/master/graph/badge.svg)](https://codecov.io/gh/MontpellierRessourcesImagerie/spots-in-yeasts)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/spots-in-yeasts)](https://napari-hub.org/plugins/spots-in-yeasts)
 
-A Napari plugin segmenting yeast cells and YFP spots to extract statistics.
+A Napari plugin segmenting yeast cells and fluo spots to extract statistics.
 
 ----------------------------------
 
@@ -16,7 +16,7 @@ The skeleton on this [napari] plugin was generated with [Cookiecutter] using [@n
 
 ## Introduction
 
-> This Napari plugin's purpose is to extract statistics about YFP spots in yeast cells. We produce a segmentation of cells (based on the brightfield) and a segmentation of YFP spots (based on the fluo channel). Then, we associate the measures to each cells.
+> This Napari plugin's purpose is to extract statistics about fluo spots in yeast cells. We produce a segmentation of cells (based on the brightfield) and a segmentation of spots (based on the fluo channel). Then, we associate the measures to each cells.
 
 Unless you use the `NapariJ` plugin to open images, or the `cast_extension.ijm` script to cast files, you can only launch this plugin on `.tif` images.
 
@@ -42,27 +42,27 @@ Required packages in your environment:
 
 ## Installation
 
-You can install `yfp-spots-in-yeasts` via [pip]:
+You can install `spots-in-yeasts` via [pip]:
 
-    pip install yfp-spots-in-yeasts
+    pip install spots-in-yeasts
 
 
 
 To install latest development version :
 
-    pip install git+https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts.git
+    pip install git+https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts.git
 
 
 ## Example
 
 - Your images must have exactly two channels. The number of slices in each channel is totally up to you.
-- __First channel__: YFP, __second channel__: brightfield.
+- __First channel__: fluo spots, __second channel__: brightfield.
 - If you want to use the batch mode, you must use `.tif` images.
 
-The two following images are the __brightfield__ and __yfp__ channels of the same image:
+The two following images are the __brightfield__ and __fluo spots__ channels of the same image:
 
 ![Brightfield](https://dev.mri.cnrs.fr/attachments/download/3017/bf.png)
-![YFP](https://dev.mri.cnrs.fr/attachments/download/3018/fluo.png)
+![Spots](https://dev.mri.cnrs.fr/attachments/download/3018/fluo.png)
 
 The following images are the __cells labels__ and the __spots positions__:
 
@@ -76,9 +76,9 @@ The following images are the __cells labels__ and the __spots positions__:
 - Open Napari. Keep the terminal opened, it provides lots of information.
 - Before starting, make sure that no layer is currently open. You can clear your viewer with the `Clear layers` button.
 - Drag'n'drop your image into the Napari viewer. It should show up in the left column.
-- Click the `Split channels` button to separate the brightfield and the fluo on two different layers. Now, you should have two layers named "brightfield" and "yfp".
+- Click the `Split channels` button to separate the brightfield and the fluo on two different layers. Now, you should have two layers named "brightfield" and "fluo-spots".
 - To segment yeast cells, click the `Segment cells` button. The interface will certainly freeze during a few seconds (~10/30s). A new layer should appear, containing a value of intensity for each individual cell.
-- Click on the `Segment YFP spots` button. This is a pretty fast operation. A new layer containing spots just appeared. Spots are represented as small white dots. You can change that in the layer's settings you struggle controling the result.
+- Click on the `Segment spots` button. This is a pretty fast operation. A new layer containing spots just appeared. Spots are represented as small white dots. You can change that in the layer's settings you struggle controling the result.
 - Finally, you can use the `Extract stats` button to create a JSON file. This file will automatically be opened in your default text editor, but it is a __temporary file__, which means that it is not saved anywhere and will get lost if you don't save it yourself.
 - Once you are done, you can press the `Clear layers` button again and pass to your next image, repeating the previous steps.
 
@@ -118,7 +118,7 @@ the coverage at least stays the same before you submit a pull request.
 ## License
 
 Distributed under the terms of the [MIT] license,
-"yfp-spots-in-yeasts" is free and open source software
+"spots-in-yeasts" is free and open source software
 
 ## Issues
 
@@ -139,7 +139,7 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 - [ ] Use a threshold on the number of spots to detect dead cells.
 - [X] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".
 - [X] Create a control image at each iteration in batch mode.
-- [ ] Expose settings to: select the number of slices around focus, the size of spots.
+- [ ] Expose settings to: select the number of slices around focus, the distance between peaks.
 - [ ] Make sure the documentation can be generated with Sphinx.
 - [X] Create a reader to ease the controling process.
 - [X] Add a button to load the original image when a control image is opened.
@@ -166,7 +166,7 @@ If you encounter any problems, please [file an issue] along with a detailed desc
 [Mozilla Public License 2.0]: https://www.mozilla.org/media/MPL/2.0/index.txt
 [cookiecutter-napari-plugin]: https://github.com/napari/cookiecutter-napari-plugin
 
-[file an issue]: https://github.com/MontpellierRessourcesImagerie/yfp-spots-in-yeasts/issues
+[file an issue]: https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts/issues
 
 [napari]: https://github.com/napari/napari
 [tox]: https://tox.readthedocs.io/en/latest/

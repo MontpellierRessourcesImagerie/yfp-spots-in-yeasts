@@ -13,7 +13,6 @@ def napari_get_reader(path):
     return reader_function
 
 
-
 def reader_function(paths):
     # Check that we have the path of a folder.    
     path = paths if isinstance(paths, str) else paths[0]
@@ -85,7 +84,7 @@ def reader_function(paths):
         components.append((
             imread(projected_spots), 
             {
-                'name': "yfp",
+                'name': "fluo-spots",
                 'blending': 'opaque'
             }, 
             'image'

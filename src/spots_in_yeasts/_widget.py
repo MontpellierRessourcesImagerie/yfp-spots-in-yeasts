@@ -15,13 +15,13 @@ from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
 import sys
-from yfp_spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
+from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
 
-_bf    = "brightfield"
-_yfp   = "yfp"
-_lbl_c = "labeled-cells"
-_lbl_s = "labeled-spots"
-_spots = "spots-positions"
+_bf      = "brightfield"
+_f_spots = "fluo-spots"
+_lbl_c   = "labeled-cells"
+_lbl_s   = "labeled-spots"
+_spots   = "spots-positions"
 
 @magicclass
 class SpotsInYeastsDock:
@@ -179,10 +179,6 @@ class SpotsInYeastsDock:
         self.path    = str(path)
         self._init_queue_()
 
-    def _marker_path(self):
-        p = Path(__file__)
-        return p.parent / "utils" / "marker.pgm"
-
     def _init_queue_(self):
         if os.path.isdir(self.path):
             self.queue = [os.path.join(self.path, i) for i in os.listdir(self.path) if i.lower().endswith('.tif')]
@@ -192,6 +188,7 @@ class SpotsInYeastsDock:
 
         print(f"{len(self.queue)} files found.")
     
+
     @magicgui(call_button="Clear layers")
     def clear_layers_gui(self):
         """
@@ -236,7 +233,7 @@ class SpotsInYeastsDock:
 
         a, b = np.split(imIn, indices_or_sections=2, axis=axis)
         
-        self._set_image(_yfp, np.squeeze(a), {
+        self._set_image(_f_spots, np.squeeze(a), {
             'rgb'      : False,
             'colormap' : 'yellow',
             'blending' : 'opaque'
@@ -271,17 +268,17 @@ class SpotsInYeastsDock:
         return True
 
 
-    @magicgui(call_button="Segment YFP spots")
+    @magicgui(call_button="Segment spots")
     def segment_fluo_gui(self):
         
-        if not self._required_key(_yfp):
-            print(colored(_yfp, 'red', attrs=['underline']), end="")
+        if not self._required_key(_f_spots):
+            print(colored(_f_spots, 'red', attrs=['underline']), end="")
             print(colored(" channel not found.", 'red'))
             return False
 
         start = time.time()
-        spots_locations, labeled_spots, yfp = segment_spots(self._get_image(_yfp), self._get_image(_lbl_c))
-        self._set_image(_yfp, yfp)
+        spots_locations, labeled_spots, f_spots = segment_spots(self._get_image(_f_spots), self._get_image(_lbl_c))
+        self._set_image(_f_spots, f_spots)
 
         # Checking whether the distribution is uniform or not.
         # We consider that the segmentation has failed if it is uniform.
@@ -310,10 +307,10 @@ class SpotsInYeastsDock:
             print(colored("Spots segmentation not available yet.", 'yellow'))
             return False
 
-        labeled_cells = self._get_image(_lbl_c)
-        yfp_original  = self._get_image(_yfp)
-        labeled_spots = self._get_image(_lbl_s)
-        ownership     = associate_spots_yeasts(labeled_cells, labeled_spots, yfp_original)
+        labeled_cells   = self._get_image(_lbl_c)
+        fspots_original = self._get_image(_f_spots)
+        labeled_spots   = self._get_image(_lbl_s)
+        ownership       = associate_spots_yeasts(labeled_cells, labeled_spots, fspots_original)
 
         if not os.path.isdir(self._get_export_path()):
             prepare_directory(self._get_export_path())
@@ -343,6 +340,19 @@ class SpotsInYeastsDock:
     def _get_path(self):
         return self.path
 
+    def _create_control(self):
+        create_reference_to(
+            self._get_image(_lbl_c), 
+            self._get_image(_lbl_s), 
+            self._get_spots(),
+            self._get_current_name(),
+            self._get_export_path(),
+            self._get_path(),
+            self._get_image(_bf),
+            self._get_image(_f_spots)
+        )
+        return True
+
     def _batch_folder_worker(self, input_folder, output_folder, nElements):
         
         exec_start = time.time()
@@ -352,28 +362,17 @@ class SpotsInYeastsDock:
             self.split_channels_gui,
             self.segment_brightfield_gui,
             self.segment_fluo_gui,
-            self.extract_stats_gui
+            self.extract_stats_gui,
+            self._create_control
         ]
 
         while self._next_item():
-            ok = True
             for step in procedure:
-                ok = step() and ok
-                if not ok:
+                if not step():
                     print(colored("Failed to process: ", 'red'), end="")
                     print(colored(self._get_current_name(), 'red', attrs=['underline']), end="")
                     print(colored(".", 'red'))
                     break
-            if ok:
-                create_reference_to(
-                    self._get_image(_lbl_c), 
-                    self._get_image(_lbl_s), 
-                    self._get_spots(),
-                    self._get_current_name(),
-                    self._get_export_path(),
-                    self._get_path(),
-                    self._get_image(_bf),
-                    self._get_image(_yfp))
             
             yield iteration
             iteration += 1
