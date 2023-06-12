@@ -1,4 +1,4 @@
-from skimage.io import imread, imsave
+from skimage.io import imsave
 from skimage.filters import threshold_isodata
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
@@ -8,7 +8,6 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_cdt, label
 from termcolor import colored
 import os, cv2, shutil
-import matplotlib.pyplot as plt
 import numpy as np
 from cellpose import models, utils, io
 from datetime import datetime

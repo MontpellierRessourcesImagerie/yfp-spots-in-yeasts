@@ -1,20 +1,14 @@
 import napari
-from tifffile import imread, imsave
+from tifffile import imread
 import numpy as np
 from magicgui import magicgui, widgets
 from magicclass import magicclass
 from pathlib import Path
 from termcolor import colored
-import os
-import json
-import tempfile
-import time
-import subprocess
-import platform
+import os, json, tempfile, time, subprocess, platform, sys
 from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
-import sys
 from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
 
 _bf      = "brightfield"

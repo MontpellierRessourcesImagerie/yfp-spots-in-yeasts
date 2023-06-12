@@ -4,7 +4,6 @@ import json
 import numpy as np
 from termcolor import colored
 
-
 def make_histograms(root_path, suffix, intensity_bins):
     """
     Here we build two histograms.
