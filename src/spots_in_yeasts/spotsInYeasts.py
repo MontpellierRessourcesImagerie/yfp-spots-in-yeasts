@@ -289,18 +289,25 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
     true_spots  = []
 
     for spot in spots_props:
-        (r, c) = spot.centroid
-        lbl = int(labeled_cells[int(r), int(c)])
+        cds = [int(k) for k in spot.centroid]
+        r, c = cds
+        lbl = int(labeled_cells[r, c])
 
         if lbl == 0:
             removed.append(spot.label)
             continue # We are in the background
         
         ownership[lbl].append({
-            'location'      : (int(r), int(c)),
-            'intensity_mean': float(spot['intensity_mean']),
-            'area'          : float(spot['area']),
-            'perimeter'     : float(spot['perimeter'])
+            'label'         : int(spot['label']),
+            'location'      : (r, c),
+            'intensity_mean': round(float(spot['intensity_mean']), 3),
+            'intensity_min' : round(float(spot['intensity_min']), 3),
+            'intensity_max' : round(float(spot['intensity_max']), 3),
+            'area'          : round(float(spot['area']), 3),
+            'perimeter'     : round(float(spot['perimeter']), 3),
+            'solidity'      : round(float(spot['solidity']), 3),
+            'extent'        : round(float(spot['extent']), 3),
+            'intensity_sum' : int(np.sum(spot.intensity_image))
         })
         
         true_spots.append((r, c))

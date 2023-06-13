@@ -1,5 +1,6 @@
 import napari
 from tifffile import imread
+from datetime import datetime
 import numpy as np
 from magicgui import magicgui, widgets
 from magicclass import magicclass
@@ -10,6 +11,7 @@ from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
 from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
+from spots_in_yeasts.formatData import format_data_1844
 
 _bf      = "brightfield"
 _f_spots = "fluo-spots"
@@ -40,6 +42,10 @@ class SpotsInYeastsDock:
         self.viewer = napari_viewer
         # Display name used for the current image
         self.name = ""
+        # CSV table containing results for the batch mode
+        self.csvtable = None
+        # Export path, only for batch mode
+        self.csvexport = ""
 
     def _clear_state(self):
         self.images = {}
@@ -50,6 +56,8 @@ class SpotsInYeastsDock:
         self.current = None
         self.path = None
         self.name = ""
+        self.csvtable = None
+        self.csvexport = ""
 
         self.clear_layers_gui()
         
@@ -191,6 +199,7 @@ class SpotsInYeastsDock:
         self._current_viewer().layers.clear()
         self._reset_current()
         self._clear_data()
+        self.csvtable = None
         return True
 
 
@@ -309,10 +318,11 @@ class SpotsInYeastsDock:
         if not os.path.isdir(self._get_export_path()):
             prepare_directory(self._get_export_path())
 
-        measures_path = os.path.join(self._get_export_path(), self._get_current_name()+".json")
+        measures_path = self.csvexport if self._is_batch() else os.path.join(self._get_export_path(), self._get_current_name()+".csv")
+        self.csvtable = format_data_1844(ownership, self._get_current_name(), self.csvtable)
+
         try:
-            with open(measures_path, 'w') as measures_file:
-                json.dump(ownership, measures_file, indent=2)
+            self.csvtable.exportTo(measures_path)
         except:
             print(colored("Failed to export measures to: ", 'red'), end="")
             print(colored(measures_path,'red', attrs=['underline']))
@@ -359,6 +369,9 @@ class SpotsInYeastsDock:
             self.extract_stats_gui,
             self._create_control
         ]
+        now = datetime.now()
+        date_time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
+        self.csvexport   = os.path.join(self.e_path, f"batch-results-{date_time_string}.csv")
 
         while self._next_item():
             for step in procedure:

@@ -7,7 +7,7 @@ Welcome to Spots in yeasts's documentation!
 ===========================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
    :caption: Contents:
    
    user_guide
