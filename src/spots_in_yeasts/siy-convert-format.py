@@ -20,6 +20,13 @@ from ij.macro import Interpreter
 _desired_order_ = ['Spots', 'Brightfield', 'Nuclei']
 
 def remap_indices(provided_order):
+    """
+    Function taking the provided order and tells where each channel of the original order must go to get the desired order.
+
+    Returns:
+        A list of indices.
+        Example: If the returned list is [2, 0, 1], it means that in the provided images, the first channel will become the third, the second will become the first and the third will become the second.
+    """
     remaped = []
     for compo in provided_order:
         if compo == "-":
@@ -138,7 +145,7 @@ class ImageConverter(ActionListener):
             str(self.c2_dropdown.getSelectedItem()),
             str(self.c3_dropdown.getSelectedItem())
         ]
-        print("Input order: "  + str(self.order))
+        print("Input order : " + str(self.order))
         print("Target order: " + str(_desired_order_))
 
         if not self.validate_settings():
@@ -148,10 +155,36 @@ class ImageConverter(ActionListener):
 
 
     def validate_settings(self):
-        # Check que les directories existent.
-        # Check que l'extension fournie commence par un point.
-        # Check qu'il n'y a pas de doublons dans l'ordre.
-        # Check qu'il n'y a rien après le premier tiret dans l'ordre.
+        # Check that both directories exist
+        if not os.path.isdir(self.input_dir):
+            print("`" + self.input_dir + "` is not a valid input directory.")
+            return False
+        
+        if not os.path.isdir(self.output_dir):
+            print("`" + self.output_dir + "` is not a valid output directory")
+            return False
+        
+        # Check that extension starts with a dot.
+        if not self.format.startswith("."):
+            print("An extension should start with a '.'")
+            return False
+
+        # Check that there is no duplicate in the provided order.
+        s = set(self.order)
+        if len(s) != len(self.order):
+            print("There should not be any duplicate in the provided order. Found: " + str(self.order))
+            return False
+        
+        # Check that the first hyphen marks the end of the order.
+        found = False
+        for element in self.order:
+            found = found or (element == "-")
+            if not found:
+                continue
+            if element != "-":
+                print("There should not be any element following the first hyphen in the order. Found: " + str(self.order))
+                return False
+
         return True
 
 

@@ -4,10 +4,18 @@ spots\_in\_yeasts package
 Submodules
 ----------
 
-spots\_in\_yeasts.makeStats module
-----------------------------------
+spots\_in\_yeasts.convert\-format module
+----------------------------------------
 
-.. automodule:: spots_in_yeasts.makeStats
+.. automodule:: spots_in_yeasts.convert-format
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+spots\_in\_yeasts.formatData module
+-----------------------------------
+
+.. automodule:: spots_in_yeasts.formatData
    :members:
    :undoc-members:
    :show-inheritance:

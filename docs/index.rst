@@ -11,6 +11,7 @@ Welcome to Spots in yeasts's documentation!
    :caption: Contents:
    
    user_guide
+   convert_data
    modules
 
 .. automodule:: spots_in_yeasts
