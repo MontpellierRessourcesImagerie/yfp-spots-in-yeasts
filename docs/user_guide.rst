@@ -5,19 +5,16 @@ Quick start: A user guide
 Install the plugin 
 ------------------------------------------
 
-With pip
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**With pip**
 
 Simply launch your conda environment, and type :code:`pip install spots-in-yeasts`.
 The plugin should then appear in your plugins list.
 
-From Napari Hub
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**From Napari Hub**
 
 Go in the plugins menu of Napari and search for "Spots in yeasts"
 
-From GitHub
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**From GitHub**
 
 You can also install the last development version. To do so, start by launching your conda environment and then use the command :code:`pip install git+https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts.git`.
 
@@ -47,12 +44,12 @@ Processing
 Process a single image
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- If something is already present in the Napari viewer, click on :code:`Clear layers`.
+- If something is already present in the Napari viewer, click on :code:`Clear layers`. It will flush everything present in your current viewer.
 - Drag'N'drop your TIFF file into the Napari viewer. It should appear in the left column.
-- Click on :code:`Split channels`. Now, your original image should have disappeared (in the left column) and two new layers have appeared, which are the brightfield and the spots.
-- You can now click the :code:`Segment cells` button. This operation can take quite a while depending on your hardware. The presence of a dedicated GPU on your machine would help a lot. The result will spawn as a new layer containing a label for each cell in the brightfield. At this point, cells cut by the borders have already been discarded.
-- Click the :code:`Segment spots` button. This step is much quicker. You can zoom on your image to see where spots were detected. Note that the white circles only represent the position of detected spots, they do not represent the segmentation. If you prefer to see the segmentation, you can hide the :code:`spots-positions` layer and use the :code:`labeled-spots` one instead.
-- Finally, you can use the :code:`Extract stats` button. This will open a CSV file in your default text-viewer. Keep in mind that it is a temporary file, it is not saved anywhere and will disappear as soon as you close it if you don't save it.
+- Click on :code:`Split channels`. Now, your original image should have disappeared (in the left column) and two new layers took its place.They represent the brightfield and the fluo channel of your image. Layers are opaque, which means that as long as you don't toggle the little eye icon in the left column, the viewer shows you the uppermost layer.
+- You can now click the :code:`Segment cells` button. This operation can take quite a while depending on your hardware. The presence of a dedicated GPU on your machine would help a lot. The result will spawn as a new layer containing a label for each cell in the brightfield. At this point, cells cut by the borders have already been discarded. If you make this new layer active (just click on it in the left column until its name turns blue), you can pass your mouse over each label to verify its value. These values match the indices present in the results file.
+- Click the :code:`Segment spots` button. This step is much quicker. You can zoom on your image to see where spots were detected. Note that the white circles only represent the position of detected spots, they do not represent the segmentation. If you prefer to see the segmentation, you can hide the :code:`spots-positions` layer and use the :code:`labeled-spots` one instead. Of the same way as in the previous step, you can make this layer active to see the indices, which are the same as in the results file.
+- Finally, you can use the :code:`Extract stats` button. This will open a CSV file in your default spreadsheet software. Keep in mind that it is a temporary file, it is not saved anywhere and will disappear as soon as you close it if you don't save it.
 
 Batch processing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +82,7 @@ How to read the results?
 - :code:`intensity-sum`: Also known as integrated intensity, this is the sum of intensities across all pixels within the spot.
 - :code:`perimeter`: The length of the perimeter around the spot, measured in steps with diagonal connectivity.
 - :code:`solidity`: The ratio of the spot's area to the area of its convex hull. A star-shaped spot will have a value close to 0, while a more circular spot will have a value close to 1.
-- :code:`extent`: The ratio of the spot's area to the area of its bounding box, which is the smallest rectangle that contains the spot.
+- :code:`extent`: The ratio of the spot's area to the area of its bounding box, which is the smallest rectangle that contains the spot. This metric gives an idea of how elongated the spot is. For example, a perfect circle and a perfect ellipse will both have a solidity of 1.0, however, their extent will vary.
 - :code:`# spots`: The number of spots detected in the given cell.
 
 

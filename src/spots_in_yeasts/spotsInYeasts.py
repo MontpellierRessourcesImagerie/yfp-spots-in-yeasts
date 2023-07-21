@@ -1,8 +1,9 @@
 from skimage.io import imsave
-from skimage.filters import threshold_isodata
+from skimage.filters import threshold_isodata, threshold_otsu
 from skimage.segmentation import watershed, clear_border
 from skimage.morphology import dilation, disk
 from skimage.measure import regionprops
+from skimage.measure import label as connected_compos_labeling
 from skimage.feature import peak_local_max
 from matplotlib.colors import LinearSegmentedColormap
 from scipy.ndimage import median_filter, gaussian_laplace, distance_transform_cdt, label
@@ -41,6 +42,18 @@ def make_outlines(labeled_cells, thickness=2):
     dilated = dilation(labeled_cells, disk(thickness)) - labeled_cells
     return dilated > 0
 
+
+def write_labels_image(image, font_scale):
+    regions   = regionprops(image)
+    canvas    = np.zeros(image.shape, dtype=np.uint8)
+    thickness = 2
+
+    for region in regions:
+        y, x = region.centroid
+        size, baseline = cv2.getTextSize(str(region.label), cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+        cv2.putText(canvas, str(region.label), (int(x-size[0]/2), int(y+size[1]/2)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, 255, thickness)
+
+    return canvas
 
 def find_focused_slice(stack, around=2):
     """
@@ -148,7 +161,7 @@ def place_markers(shp, m_list):
 #################################################################################
 
 
-def segment_transmission(stack, gpu=True):
+def segment_transmission(stack, gpu=True, slices_around=2):
     """
     Takes the path of an image that contains some yeasts in transmission.
 
@@ -160,7 +173,6 @@ def segment_transmission(stack, gpu=True):
     """
     # Boolean value determining if we want to use all the slices of the stack, or just the most in-focus.
     pick_slices   = True
-    slices_around = 2
 
     # >>> Opening stack as an image collection:
     stack_sz  = stack.shape
@@ -183,18 +195,18 @@ def segment_transmission(stack, gpu=True):
     labeled_transmission = segment_yeasts_cells(input_bf, gpu)
 
     # >>> Finding and removing the labels touching the borders:
-    nCellsBefore = len(np.unique(labeled_transmission))-1
-    cleared_bd   = clear_border(labeled_transmission, buffer_size=3)
-    nCellsAfter  = len(np.unique(cleared_bd))-1
-    print(colored(f"{nCellsBefore-nCellsAfter} cells discarded due to border. {nCellsAfter} cells remaining.", 'yellow'))
+    # nCellsBefore = len(np.unique(labeled_transmission))-1
+    # cleared_bd   = clear_border(labeled_transmission, buffer_size=3)
+    # nCellsAfter  = len(np.unique(cleared_bd))-1
+    # print(colored(f"{nCellsBefore-nCellsAfter} cells discarded due to border. {nCellsAfter} cells remaining.", 'yellow'))
 
-    return cleared_bd, input_bf
+    return labeled_transmission, input_bf
 
 
 #################################################################################
 
 
-def segment_spots(stack, labeled_cells=None):
+def segment_spots(stack, labeled_cells=None, sigma=3.0, peak_d=5):
     """
     Args:
         stack: A numpy array representing the fluo channel
@@ -225,14 +237,14 @@ def segment_spots(stack, labeled_cells=None):
 
     # >>> LoG filter + thresholding
     asf  = input_fSpots.astype(np.float64)
-    LoG  = gaussian_laplace(asf, sigma=3.0)
+    LoG  = gaussian_laplace(asf, sigma=sigma)
     t    = threshold_isodata(LoG)
     mask = LoG < t
 
     # >>> Detection of spots location
     asf     = mask.astype(np.float64)
     chamfer = distance_transform_cdt(asf)
-    maximas = peak_local_max(chamfer, min_distance=5)
+    maximas = peak_local_max(chamfer, min_distance=peak_d)
 
     if labeled_cells is not None:
         clean_points = []
@@ -267,7 +279,7 @@ def estimate_uniformity(pts, shape, pvalue=0.02):
     return is_unif
 
 
-def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
+def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_threshold, solidity_threshold, extent_threshold, death_threshold):
     """
     Associates each spot with the label it belongs to.
     A safety check is performed to make sure no spot falls in the background.
@@ -283,10 +295,7 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
     """
     unique_values = np.unique(labeled_cells)
     ownership     = {int(u): [] for u in unique_values if (u > 0)}
-
-    spots_props = regionprops(labeled_spots, intensity_image=fluo_spots)
-    removed     = []
-    true_spots  = []
+    spots_props   = regionprops(labeled_spots, intensity_image=fluo_spots)
 
     for spot in spots_props:
         cds = [int(k) for k in spot.centroid]
@@ -294,8 +303,16 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
         lbl = int(labeled_cells[r, c])
 
         if lbl == 0:
-            removed.append(spot.label)
             continue # We are in the background
+
+        if float(spot['area']) > area_threshold:
+            continue
+        
+        if float(spot['solidity']) < solidity_threshold:
+            continue
+        
+        if float(spot['extent']) < extent_threshold:
+            continue
         
         ownership[lbl].append({
             'label'         : int(spot['label']),
@@ -309,13 +326,15 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots):
             'extent'        : round(float(spot['extent']), 3),
             'intensity_sum' : int(np.sum(spot.intensity_image))
         })
-        
-        true_spots.append((r, c))
     
-    removed_mask = np.isin(labeled_spots, removed)
+    # Too many spots correspond to a dead cell.
+    ownership = {key: value for key, value in ownership.items() if len(value) < death_threshold}
+    
+    compare = np.array([item['label'] for sub_list in ownership.values() for item in sub_list])
+    removed_mask = np.isin(labeled_spots, compare, invert=True)
     labeled_spots[removed_mask] = 0
 
-    return ownership
+    return ownership, np.array([item['location'] for sub_list in ownership.values() for item in sub_list]), labeled_spots
 
 
 def prepare_directory(path):
@@ -334,7 +353,112 @@ def prepare_directory(path):
         # Create the folder
         os.makedirs(path)
 
-def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots):
+
+def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage, threshold_size_nucleus):
+    """
+    This function starts by segmenting nuclei.
+    Then it curates the results to have exactly one nucleus per cell and remove dying cells.
+    
+    Args:
+        labeled_yeasts: The labeled yeast cells.
+        fluo_nuclei: The fluo channel where nuclei are marked.
+        threshold_coverage: Value between 0 and 1. If the nucleus covers a cell over this ratio, it is discarded.
+        threshold_size_nucleus: Below this size, a nucleus is discarded.
+    
+    Returns
+        The segmentation of cells fixed to have the nuclei of each cell, and the segmented nuclei.
+    """
+    # >>> Opening fluo spots stack
+    stack_sz    = stack_fluo_nuclei.shape
+    fluo_nuclei = None
+
+    # >>> Max projection of the stack
+    if len(stack_sz) > 2: # We have a stack, not a single image.
+        fluo_nuclei = np.max(stack_fluo_nuclei, axis=0)
+    else:
+        fluo_nuclei = np.squeeze(stack_fluo_nuclei)
+    
+    # Creating a basic mask representing nuclei.
+    t = threshold_otsu(fluo_nuclei)
+    mask_nuclei = fluo_nuclei > t
+    lbl_nuclei = connected_compos_labeling(mask_nuclei)
+
+    # Dict giving, for each nucleus index, every cell index it participates in.
+    # It allows to check which nuclei fall in the background, which ones are in a dividing cell, ...
+    participations_cells = {}
+    # Dict giving, for each cell index, every nuclei it participates in.
+    # This is used to check errors where some cells visually have several nuclei.
+    participation_nuclei = {}
+    # Dict giving for each tuple (nucleus index, cell index), the number of pixels in the intersection.
+    intersection_area = {}
+
+    # For each nuclei, which cells is it involved in?
+    for (l, c), idx_n in np.ndenumerate(lbl_nuclei):
+        if idx_n == 0:
+            continue
+        idx_c = labeled_yeasts[l, c]
+        participations_cells.setdefault(idx_n, set()).add(idx_c)
+        participation_nuclei.setdefault(idx_c, set()).add(idx_n)
+        intersection_area.setdefault((idx_c, idx_n), 0)
+        intersection_area[(idx_c, idx_n)] += 1
+
+    hist_nuclei, _ = np.histogram(lbl_nuclei, bins=np.max(lbl_nuclei)+1)
+    hist_yeasts, _ = np.histogram(labeled_yeasts, bins=np.max(labeled_yeasts)+1)
+
+    # Calculating all the nuclei that must be discarded.
+    discarded = set()
+    for idx_n, cells in participations_cells.items():
+        # If the nuclei is smaller than a threshold in pixels.
+        if hist_nuclei[idx_n] < threshold_size_nucleus:
+            discarded.add(idx_n)
+            continue
+        # If the nuclei has more than 10 of its pixels in the background.
+        if (0 in cells) and (intersection_area[(0, idx_n)] >= 10):
+            discarded.add(idx_n)
+            continue
+        # If the nuclei participates in more than 2 cells.
+        if len(cells) not in {1, 2}:
+            discarded.add(idx_n)
+            continue
+
+    for idx_c, nuclei in participation_nuclei.items():
+        # If a cell is intersected by several nuclei
+        if len(nuclei) != 1:
+            discarded = discarded.union(set(nuclei))
+
+    # Remove nuclei that cover over 75% of their cell's surface.
+    for idx_n, cells in participations_cells.items():
+        for idx_c in cells:
+            if hist_nuclei[idx_n] / hist_yeasts[idx_c] > threshold_coverage:
+                discarded.add(idx_n)
+
+    # Removing labels corresponding to invalid nuclei.
+    discarded_arr = np.array([i for i in discarded])
+    removed_mask  = np.isin(lbl_nuclei, discarded_arr)
+    lbl_nuclei[removed_mask] = 0
+
+    # Removing cells in contact with invalid nuclei.
+    mask_nuclei     = lbl_nuclei > 0
+    lbl_yeasts_copy = np.copy(labeled_yeasts)
+    lbl_yeasts_copy[np.logical_not(mask_nuclei)] = 0
+    valid_labels    = np.unique(lbl_yeasts_copy)
+    valid_cells     = np.copy(labeled_yeasts)
+    removed_mask    = np.isin(valid_cells, valid_labels, invert=True)
+    valid_cells[removed_mask] = 0
+
+    # Modifying cells' labels to assemble dividing cells.
+    canvas = np.zeros(valid_cells.shape, dtype=np.int64)
+    for idx_n, cells in participations_cells.items():
+        for idx_c in cells:
+            if idx_c > 0:
+                canvas += np.where(valid_cells == idx_c, idx_n, 0)
+    canvas = canvas.astype(np.uint16)
+    return fluo_nuclei, canvas, lbl_nuclei # Fixed segmented yeasts and segmented nuclei.
+
+def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots, spots_list):
+    pass
+
+def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots, indices):
     present = datetime.now()
 
     # Export projections.
@@ -347,6 +471,8 @@ def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_
 
     # Create outlines of cells, save them along labeled cells.
     outlines = make_outlines(labeled_cells)
+    indices  = indices > 0
+    outlines = np.logical_or(outlines, indices)
     imsave(
         os.path.join(control_dir_path, name+"_outlines.tif"),
         outlines)

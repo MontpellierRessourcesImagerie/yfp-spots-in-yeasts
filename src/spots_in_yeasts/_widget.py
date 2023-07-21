@@ -10,14 +10,38 @@ import os, json, tempfile, time, subprocess, platform, sys
 from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
 from napari.qt.threading import thread_worker, create_worker
 from napari.utils import progress
-from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory
-from spots_in_yeasts.formatData import format_data_1844
+from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, estimate_uniformity, associate_spots_yeasts, create_reference_to, prepare_directory, write_labels_image, segment_nuclei
+from spots_in_yeasts.formatData import format_data_1844, format_data_1895
+from enum import Enum, auto
 
 _bf      = "brightfield"
 _f_spots = "fluo-spots"
 _lbl_c   = "labeled-cells"
 _lbl_s   = "labeled-spots"
 _spots   = "spots-positions"
+_n_cells = "cells-indices"
+_nuclei  = "fluo-nuclei"
+_lbl_n   = "labeled-nuclei"
+
+class FormatsList(Enum):
+    format_1844 = auto()
+    format_1895 = auto()
+
+def default_export():
+    return FormatsList.format_1844
+
+_global_settings = {
+    'gaussian_radius'   : 3.0,
+    'neighbour_slices'  : 2,
+    'peak_distance'     : 5,
+    'area_threshold'    : 90,
+    'extent_threshold'  : 0.6,
+    'solidity_threshold': 0.87,
+    'death_threshold'   : 4,
+    'cover_threshold'   : 0.75,
+    'nuclei_threshold'  : 15,
+    'export_mode'       : FormatsList.format_1844
+}
 
 @magicclass
 class SpotsInYeastsDock:
@@ -46,6 +70,8 @@ class SpotsInYeastsDock:
         self.csvtable = None
         # Export path, only for batch mode
         self.csvexport = ""
+        # Dictionary containing for each cell's label, the list of spots it owns
+        self.ownership = {}
 
     def _clear_state(self):
         self.images = {}
@@ -58,6 +84,7 @@ class SpotsInYeastsDock:
         self.name = ""
         self.csvtable = None
         self.csvexport = ""
+        self.ownership = {}
 
         self.clear_layers_gui()
         
@@ -75,6 +102,12 @@ class SpotsInYeastsDock:
         self.spots_data = None
         self.images = {}
 
+    def _set_ownership(self, ownership):
+        self.ownership = ownership
+
+    def _get_ownership(self):
+        return self.ownership
+
     def _set_spots(self, spots):
         self.spots_data = spots
 
@@ -89,7 +122,7 @@ class SpotsInYeastsDock:
     def _get_spots(self):
         return self.spots_data
 
-    def _set_image(self, key, data, args={}, aslabels=False):
+    def _set_image(self, key, data, args={}, aslabels=False, ctr=0):
         self.images[key] = data
         
         if self.batch:
@@ -108,6 +141,8 @@ class SpotsInYeastsDock:
                     data,
                     name=key,
                     **args)
+        if aslabels:
+            self._current_viewer().layers[key].contour = ctr
     
     def _get_image(self, key):
         return self.images.get(key)
@@ -189,7 +224,36 @@ class SpotsInYeastsDock:
             self.queue = [self.path] if self.path.lower().endswith('.tif') else []
 
         print(f"{len(self.queue)} files found.")
+
     
+    @magicgui(
+        call_button  = "Apply settings"
+    )
+    def apply_settings_gui(
+        self, 
+        gaussian_radius: float=_global_settings['gaussian_radius'], 
+        neighbour_slices: int=_global_settings['neighbour_slices'], 
+        death_threshold: int=_global_settings['death_threshold'], 
+        peak_distance: int=_global_settings['peak_distance'], 
+        area_threshold: int=_global_settings['area_threshold'], 
+        extent_threshold: float=_global_settings['extent_threshold'], 
+        solidity_threshold: float=_global_settings['solidity_threshold'], 
+        cover_threshold: float=_global_settings['cover_threshold'],
+        nuclei_threshold: int=_global_settings['nuclei_threshold'],
+        export_mode: FormatsList=default_export()):
+        
+        global _global_settings
+
+        _global_settings['gaussian_radius']    = gaussian_radius
+        _global_settings['neighbour_slices']   = neighbour_slices
+        _global_settings['peak_distance']      = peak_distance
+        _global_settings['area_threshold']     = area_threshold
+        _global_settings['extent_threshold']   = extent_threshold
+        _global_settings['solidity_threshold'] = solidity_threshold
+        _global_settings['export_mode']        = export_mode
+        _global_settings['death_threshold']    = death_threshold    
+        _global_settings['nuclei_threshold']   = nuclei_threshold
+        _global_settings['cover_threshold']    = cover_threshold
 
     @magicgui(call_button="Clear layers")
     def clear_layers_gui(self):
@@ -213,12 +277,11 @@ class SpotsInYeastsDock:
                 print(colored(f"Excatly one image must be loaded at a time. (found {nImages})", 'red'))
                 return False
 
-        # (2, 2048, 2048)
-        # (9, 2, 2048, 2048)
-
         imIn = self._get_image(self._get_current_name()) if self._is_batch() else self._current_viewer().layers[0].data
         imSp = imIn.shape
 
+        # (2, 2048, 2048) -> channels, height, width
+        # (9, 2, 2048, 2048) -> slices, channels, height, width
         if len(imSp) not in [3, 4]:
             print(colored(f"Images must have 3 or 4 dimensions. {len(imSp)} found.", 'red'))
             return False
@@ -226,23 +289,34 @@ class SpotsInYeastsDock:
         axis      = 0 if (len(imSp) == 3) else 1
         nChannels = imSp[axis]
 
-        if nChannels != 2:
-            print(colored(f"Exactly 2 channels are expected. {nChannels} found.", 'red'))
+        if nChannels not in {2, 3}:
+            print(colored(f"Exactly 2 or 3 channels are expected. {nChannels} found.", 'red'))
             return False
         
         if not self._is_batch():
             self._set_current_name(self._current_viewer().layers[0].name)
             self._current_viewer().layers.clear()
 
-        a, b = np.split(imIn, indices_or_sections=2, axis=axis)
+        if nChannels == 2:
+            s, t = np.split(imIn, indices_or_sections=2, axis=axis)
+            n = None
+        else:
+            s, t, n = np.split(imIn, indices_or_sections=3, axis=axis)
         
-        self._set_image(_f_spots, np.squeeze(a), {
+        if n is not None:
+            self._set_image(_nuclei, np.squeeze(n), {
+                'rgb'      : False,
+                'colormap' : 'cyan',
+                'blending' : 'opaque'
+            })
+
+        self._set_image(_f_spots, np.squeeze(s), {
             'rgb'      : False,
             'colormap' : 'yellow',
             'blending' : 'opaque'
         })
 
-        self._set_image(_bf, np.squeeze(b), {
+        self._set_image(_bf, np.squeeze(t), {
             'rgb'      : False,
             'blending' : 'opaque'
         })
@@ -259,15 +333,71 @@ class SpotsInYeastsDock:
             return False
 
         start = time.time()
-        labeled, projection = segment_transmission(self._get_image(_bf), True)
+        labeled, projection = segment_transmission(self._get_image(_bf), True, _global_settings['neighbour_slices'])
+        indices = write_labels_image(labeled, 0.75)
         
-        self._set_image(_bf, projection) # _current_viewer().layers[_bf].data = projection
+        self._set_image(_bf, projection)
+        
         self._set_image(_lbl_c, labeled, {
             'blending': "additive"
         },
         True)
+
+        self._set_image(_n_cells, indices, {
+            'visible': False,
+            'blending': "additive"
+        })
         
         print(colored(f"Segmented cells from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
+        return True
+    
+
+    @magicgui(call_button="Segment nuclei")
+    def segment_nuclei_gui(self):
+        
+        if not self._required_key(_bf):
+            print(colored(_bf, 'red', attrs=['underline']), end="")
+            print(colored(" channel not found.", 'red'))
+            return False
+
+        if not self._required_key(_lbl_c):
+            print(colored(_lbl_c, 'red', attrs=['underline']), end="")
+            print(colored(" channel not found.", 'red'))
+            return False
+        
+        if not self._required_key(_nuclei):
+            print(colored(_nuclei, 'red', attrs=['underline']), end="")
+            print(colored(" channel not found.", 'red'))
+            return False
+
+        start = time.time()
+        fluo_nuclei, valid_cells, lbl_nuclei = segment_nuclei(
+            self._get_image(_lbl_c), 
+            self._get_image(_nuclei), 
+            _global_settings['cover_threshold'], 
+            _global_settings['nuclei_threshold']
+        )
+
+        indices = write_labels_image(valid_cells, 0.75)
+        self._set_image(_n_cells, indices, {
+            'visible': False,
+            'blending': "additive"
+        })
+        
+        self._set_image(_nuclei, fluo_nuclei)
+
+        self._set_image(_lbl_c, valid_cells, {
+            'blending': "additive"
+        },
+        True,
+        3)
+
+        self._set_image(_lbl_n, lbl_nuclei, {
+            'blending': "additive"
+        },
+        True)
+
+        print(colored(f"Segmented nuclei from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
         return True
 
 
@@ -280,7 +410,7 @@ class SpotsInYeastsDock:
             return False
 
         start = time.time()
-        spots_locations, labeled_spots, f_spots = segment_spots(self._get_image(_f_spots), self._get_image(_lbl_c))
+        spots_locations, labeled_spots, f_spots = segment_spots(self._get_image(_f_spots), self._get_image(_lbl_c), _global_settings['gaussian_radius'], _global_settings['peak_distance'])
         self._set_image(_f_spots, f_spots)
 
         # Checking whether the distribution is uniform or not.
@@ -289,6 +419,10 @@ class SpotsInYeastsDock:
         if unif:
             return False
         
+        labeled_cells   = self._get_image(_lbl_c)
+        ow, spots_locations, labeled_spots = associate_spots_yeasts(labeled_cells, labeled_spots, f_spots, _global_settings['area_threshold'], _global_settings['solidity_threshold'], _global_settings['extent_threshold'], _global_settings['death_threshold'])
+        self._set_ownership(ow)
+
         self._set_spots(spots_locations)
         self._set_image(_lbl_s, labeled_spots, {
             'visible' : False
@@ -310,16 +444,16 @@ class SpotsInYeastsDock:
             print(colored("Spots segmentation not available yet.", 'yellow'))
             return False
 
-        labeled_cells   = self._get_image(_lbl_c)
-        fspots_original = self._get_image(_f_spots)
-        labeled_spots   = self._get_image(_lbl_s)
-        ownership       = associate_spots_yeasts(labeled_cells, labeled_spots, fspots_original)
-
         if not os.path.isdir(self._get_export_path()):
             prepare_directory(self._get_export_path())
 
         measures_path = self.csvexport if self._is_batch() else os.path.join(self._get_export_path(), self._get_current_name()+".csv")
-        self.csvtable = format_data_1844(ownership, self._get_current_name(), self.csvtable)
+        ow = self._get_ownership()
+        
+        if _global_settings['export_mode'] == FormatsList.format_1844:
+            self.csvtable = format_data_1844(ow, self._get_current_name(), self.csvtable)
+        elif _global_settings['export_mode'] == FormatsList.format_1895:
+            self.csvtable = format_data_1895(ow, self._get_current_name(), self.csvtable)
 
         try:
             self.csvtable.exportTo(measures_path)
@@ -353,7 +487,8 @@ class SpotsInYeastsDock:
             self._get_export_path(),
             self._get_path(),
             self._get_image(_bf),
-            self._get_image(_f_spots)
+            self._get_image(_f_spots),
+            self._get_image(_n_cells)
         )
         return True
 
