@@ -1,6 +1,6 @@
 from skimage.io import imsave
 from skimage.filters import threshold_isodata, threshold_otsu
-from skimage.segmentation import watershed, clear_border
+from skimage.segmentation import watershed, clear_border, find_boundaries
 from skimage.morphology import dilation, disk
 from skimage.measure import regionprops
 from skimage.measure import label as connected_compos_labeling
@@ -14,7 +14,18 @@ from cellpose import models, utils, io
 from datetime import datetime
 from skimage import exposure
 from scipy.stats import kstest
+from scipy.ndimage import binary_erosion, binary_dilation
 
+_coordinates = {
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1)
+}
 
 def create_random_lut():
     """
@@ -205,81 +216,7 @@ def segment_transmission(stack, gpu=True, slices_around=2):
 
 #################################################################################
 
-
-def segment_spots(stack, labeled_cells=None, sigma=3.0, peak_d=5):
-    """
-    Args:
-        stack: A numpy array representing the fluo channel
-
-    Returns:
-        A dictionary containing several pieces of information about spots.
-         - original: The input image after maximal projection
-         - contrasted: A version of the channel stretched on the whole histogram.
-         - mask: A labeled image containing an index per detected spot.
-         - locations: A list of 2D coordinates representing each spot.
-    """
-
-    # >>> Opening fluo spots stack
-    stack_sz  = stack.shape
-    input_fSpots = None
-
-    # >>> Max projection of the stack
-    if len(stack_sz) > 2: # We have a stack, not a single image.
-        input_fSpots = np.max(stack, axis=0)
-    else:
-        input_fSpots = np.squeeze(stack)
-
-    # >>> Contrast augmentation + noise reduction
-    print("Starting spots segmentation...")
-    save_fSpots  = np.copy(input_fSpots)
-    input_fSpots = increase_contrast(input_fSpots)
-    input_fSpots = median_filter(input_fSpots, size=3)
-
-    # >>> LoG filter + thresholding
-    asf  = input_fSpots.astype(np.float64)
-    LoG  = gaussian_laplace(asf, sigma=sigma)
-    t    = threshold_isodata(LoG)
-    mask = LoG < t
-
-    # >>> Detection of spots location
-    asf     = mask.astype(np.float64)
-    chamfer = distance_transform_cdt(asf)
-    maximas = peak_local_max(chamfer, min_distance=peak_d)
-
-    if labeled_cells is not None:
-        clean_points = []
-        for l, c in maximas:
-            if labeled_cells[l, c] > 0:
-                clean_points.append((l, c))
-        maximas = np.array(clean_points)
-    print(f"{len(maximas)} spots found.")
-
-    # >>> Isolating instances of spots
-    m_shape   = mask.shape[0:2]
-    markers   = place_markers(m_shape, maximas)
-    lbd_spots = watershed(~mask, markers, mask=mask).astype(np.uint16)
-
-    # >>> Returning the results
-    return maximas, lbd_spots, save_fSpots
-
-
-def estimate_uniformity(pts, shape, pvalue=0.02):
-    if len(pts) <= 0:
-        return True
-
-    points = np.array(pts, dtype=np.float64) / max(shape[0], shape[1])
-    x, y = zip(*points)
-    xs = kstest(x, 'uniform')
-    ys = kstest(y, 'uniform')
-    is_unif = (xs.statistic < pvalue) and (ys.statistic < pvalue)
-
-    if is_unif:
-        print("The spots are scattered following a uniform distribution.")
-
-    return is_unif
-
-
-def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_threshold, solidity_threshold, extent_threshold, death_threshold):
+def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_threshold, solidity_threshold, extent_threshold, classification=None):
     """
     Associates each spot with the label it belongs to.
     A safety check is performed to make sure no spot falls in the background.
@@ -324,17 +261,73 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_thresh
             'perimeter'     : round(float(spot['perimeter']), 3),
             'solidity'      : round(float(spot['solidity']), 3),
             'extent'        : round(float(spot['extent']), 3),
-            'intensity_sum' : int(np.sum(spot.intensity_image))
+            'intensity_sum' : int(np.sum(spot.intensity_image)),
+            'category'      : classification[int(spot['label'])] if (classification is not None) else None
         })
-    
-    # Too many spots correspond to a dead cell.
-    ownership = {key: value for key, value in ownership.items() if len(value) < death_threshold}
     
     compare = np.array([item['label'] for sub_list in ownership.values() for item in sub_list])
     removed_mask = np.isin(labeled_spots, compare, invert=True)
     labeled_spots[removed_mask] = 0
 
     return ownership, np.array([item['location'] for sub_list in ownership.values() for item in sub_list]), labeled_spots
+
+
+def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5):
+    """
+    Args:
+        stack: A numpy array representing the fluo channel
+
+    Returns:
+        A dictionary containing several pieces of information about spots.
+         - original: The input image after maximal projection
+         - contrasted: A version of the channel stretched on the whole histogram.
+         - mask: A labeled image containing an index per detected spot.
+         - locations: A list of 2D coordinates representing each spot.
+    """
+
+    # >>> Opening fluo spots stack
+    stack_sz     = stack.shape
+    input_fSpots = None
+
+    # >>> Max projection of the stack
+    if len(stack_sz) > 2: # We have a stack, not a single image.
+        input_fSpots = np.max(stack, axis=0)
+    else:
+        input_fSpots = np.squeeze(stack)
+
+    # >>> Contrast augmentation + noise reduction
+    print("Starting spots segmentation...")
+    save_fSpots  = np.copy(input_fSpots)
+    input_fSpots = median_filter(input_fSpots, size=3)
+
+    # >>> LoG filter + thresholding
+    asf  = input_fSpots.astype(np.float64)
+    LoG  = gaussian_laplace(asf, sigma=sigma)
+    t    = threshold_isodata(LoG)
+    mask = LoG < t
+
+    # >>> Detection of spots location
+    asf     = mask.astype(np.float64)
+    chamfer = distance_transform_cdt(asf)
+    maximas = peak_local_max(chamfer, min_distance=peak_d)
+
+    spots_props = {props.label: props['intensity_mean'] for props in regionprops(labeled_cells, intensity_image=save_fSpots)}
+    maximas = np.array([(l, c) for (l, c) in maximas if (labeled_cells[l, c] > 0) and (spots_props[labeled_cells[l, c]] < death_threshold)])
+    print(f"{len(maximas)} spots found.")
+
+    # >>> Isolating instances of spots
+    m_shape   = mask.shape[0:2]
+    markers   = place_markers(m_shape, maximas)
+    lbd_spots = watershed(~mask, markers, mask=mask).astype(np.uint16)
+
+    # Sorting coordinates by label index.
+    maximas = np.array([(l, c) for (s, l, c) in sorted([(lbd_spots[l, c], l, c) for (l, c) in maximas])])
+
+    # >>> List of spots coordinates, labeled spots, flattened version of spots' fluo channel.
+    return maximas, lbd_spots, save_fSpots
+
+
+################################################################
 
 
 def prepare_directory(path):
@@ -354,25 +347,286 @@ def prepare_directory(path):
         os.makedirs(path)
 
 
-def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage, threshold_size_nucleus):
+######################################################################
+
+def remove_labels(image, labels):
+    lbls = np.array([l for l in labels])
+    mask = np.isin(image, lbls)
+    image[mask] = 0
+
+def fill_holes(image):
     """
-    This function starts by segmenting nuclei.
-    Then it curates the results to have exactly one nucleus per cell and remove dying cells.
-    
+    A hole is a background area surrounded by a unique label and from which we can't reach the image's border.
+    No in-place editing.
+
     Args:
-        labeled_yeasts: The labeled yeast cells.
-        fluo_nuclei: The fluo channel where nuclei are marked.
-        threshold_coverage: Value between 0 and 1. If the nucleus covers a cell over this ratio, it is discarded.
-        threshold_size_nucleus: Below this size, a nucleus is discarded.
-    
-    Returns
-        The segmentation of cells fixed to have the nuclei of each cell, and the segmented nuclei.
+        image: A labeled image on black background
+
+    Returns:
+        The same image as input but without holes in labels.
     """
-    # >>> Opening fluo spots stack
+    bg_mask = clear_border(connected_compos_labeling(binary_dilation(image == 0))).astype(np.uint16)
+    props   = regionprops(bg_mask, intensity_image=image)
+
+    lut = {}
+    for region in props:
+        if region.label == 0:
+            continue
+        data = region['image_intensity']
+        data[np.logical_not(region['image'])] = 0
+        values = set(np.unique(data)).difference({0})
+        lut[region.label] = 0 if len(values) > 1 else values.pop()
+
+    def replace_with_dict(x):
+        return lut.get(x, 0)
+    
+    vfunc = np.vectorize(replace_with_dict)
+    new_array = vfunc(bg_mask).astype(np.uint16)
+
+    return np.maximum(image, new_array)
+
+class YeastsPartitionGraph(object):
+    def __init__(self, o_graph, cell_to_nuclei, nucleus_to_cells, labeled_yeasts, labeled_nuclei):
+        self.graph      = dict()
+        self.partitions = {1, 2}
+        
+        for cell_lbl, neighbor_cells in o_graph.items():
+            ppts = self.graph.get(cell_lbl)
+            if ppts is not None:
+                continue
+            vertices = self.find_partition(cell_lbl, cell_to_nuclei, nucleus_to_cells, o_graph)
+            for (vertex, partition, bound, coords) in vertices:
+                self.graph[vertex] = {
+                    'neighbors'  : o_graph[vertex]['neighbors'].copy(),
+                    'partition'  : partition,
+                    'bound_to'   : bound if (bound > 0) else None,
+                    'coordinates': coords,
+                    'dist'       : 0
+                }
+        
+        self.launch_hopcroft_karp()
+        self.make_new_labels(labeled_yeasts, labeled_nuclei, cell_to_nuclei)
+        self.remove_borders(labeled_yeasts, labeled_nuclei)
+
+    def remove_borders(self, labeled_yeasts, labeled_nuclei):
+        mask = binary_erosion(np.zeros(labeled_yeasts.shape) == 0)
+        working_copy = np.copy(labeled_yeasts)
+        working_copy[mask] = 0
+
+        discarded   = np.array([i for i in set(np.unique(working_copy)).difference({0})])
+        remove_labels(labeled_yeasts, discarded)
+        remove_labels(labeled_nuclei, discarded)
+    
+    def find_partition(self, vertex, cell_to_nuclei, nucleus_to_cells, o_graph):
+        nucleus_lbl = cell_to_nuclei[vertex]['owner']
+        
+        if nucleus_lbl == 0: # 0 means that this cell doesn't have a nucleus.
+            return [(vertex, 2, 0, o_graph[vertex]['coordinates'])] # Vertices with no nuclei are stored in the partition 2.
+        else:
+            n_usage = nucleus_to_cells[nucleus_lbl]['used']
+
+            if n_usage == 2:
+                c1, c2 = [cell_lbl for cell_lbl, cell_props in enumerate(cell_to_nuclei) if (cell_props is not None) and (cell_props['owner'] == nucleus_lbl)]
+                return [(c1, 1, c2, o_graph[c1]['coordinates']), (c2, 1, c1, o_graph[c2]['coordinates'])]
+            
+            if n_usage == 1:
+                return [(vertex, 1, 0, o_graph[vertex]['coordinates'])]
+
+            raise ValueError(f"This case is not handled. (n_usage={n_usage} for cell {vertex})")
+    
+    def make_cells_lut(self):
+        current = 1
+        lut = {}
+        # partition 2: pas de nucleus, partition 1: a un nucleus
+        for key, props in self.graph.items():
+            if props['bound_to'] is None:
+                if props['partition'] == 1:
+                    # If the cell is bound to nobody but has a nucleus (independent cell)
+                    lut[key] = current
+                    current += 1
+                else:
+                    lut[key] = 0 # discarding the cell. Bound to nodoby and no nucleus.
+            else:
+                n = props['bound_to']
+                label = lut.get(key)
+                if label is None:
+                    lut[key] = current
+                    lut[n] = current
+                    current += 1
+        
+        return lut
+
+    def make_nuclei_lut(self, cell_to_nuclei, cells_lut):
+        lut = {}
+        for cell_lbl, cell_props in enumerate(cell_to_nuclei):
+            if cell_props['owner'] <= 0:
+                continue
+            lut[cell_props['owner']] = cells_lut[cell_lbl]
+        return lut
+
+    def make_new_labels(self, old_labels, old_nuclei, cell_to_nuclei):
+        # Cells part
+        lut_cells  = self.make_cells_lut()
+        lut_nuclei = self.make_nuclei_lut(cell_to_nuclei, lut_cells)
+        
+        def replace_cells_labels(x):
+            return lut_cells.get(x, 0)
+        
+        vfunc = np.vectorize(replace_cells_labels)
+        new_labels = vfunc(old_labels)
+        new_labels = fill_holes(new_labels)
+
+        old_labels[:] = new_labels.astype(np.int32)
+
+        # Nuclei part (we want nuclei labels to mach their cell)
+        def replace_nuclei_labels(x):
+            return lut_nuclei.get(x, 0)
+
+        vfunc = np.vectorize(replace_nuclei_labels)
+        new_nuclei = vfunc(old_nuclei)
+        old_nuclei[:] = new_nuclei.astype(np.int32)
+
+    def show(self):
+        from pprint import pprint
+        pprint(self.graph, stream=out_descr)
+    
+    # mode in {'partition', 'bound_to'}
+    def draw_graph(self, width_pixels, height_pixels, mode='partition', path=None):
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        from skimage.io import imshow, imsave
+
+        plt.clf()
+        plt.close()
+
+        G = nx.Graph()
+        if mode == 'partition':
+            G.add_nodes_from([(key, {'pos': (props['coordinates'][0], height_pixels-props['coordinates'][1]), 'color': '#eb4034' if props['partition'] == 1 else '#4287f5'}) for key, props in self.graph.items() if key is not None])
+        elif mode == 'bound_to':
+            lut = {}
+            for key, props in self.graph.items():
+                color = lut.get(key)
+                if color is None:
+                    color = generate_random_color()
+                    lut[key] = color
+                    lut[props['bound_to']] = color
+                position = props['coordinates']
+                G.add_node(
+                    key, 
+                    pos=(position[0], height_pixels-position[1]),
+                    color=color
+                )
+        else:
+            raise ValueError(mode + ' is not a valid value.')
+
+        for key, ppts in self.graph.items():
+            for n in ppts['neighbors']:
+                G.add_edge(key, n)
+
+        pos = nx.get_node_attributes(G, 'pos')
+        color = list(nx.get_node_attributes(G, 'color').values())
+        
+        dpi = 100
+
+        # Convertir les pixels en pouces
+        width_inches = width_pixels / dpi
+        height_inches = height_pixels / dpi
+
+        # Créer la figure avec la taille spécifiée
+        fig = plt.figure(figsize=(width_inches, height_inches), dpi=dpi)
+
+        if mode == 'partition':
+            labels = {i: i for i in self.graph.keys()}
+        elif mode == 'bound_to':
+            labels = {i: ("" if b['bound_to'] is None else b['bound_to']) for i, b in self.graph.items()}
+
+        nx.draw(G, pos, with_labels=True, edge_color='#000000', labels=labels, node_color=color, node_size=650)
+        plt.axhline(y=0, color='black', linewidth=5)
+        plt.axhline(y=height_pixels, color='black', linewidth=5)
+        plt.axvline(x=0, color='black', linewidth=5)
+        plt.axvline(x=width_pixels, color='black', linewidth=5)
+
+        if path is None:
+            plt.show()
+        else:
+            plt.savefig(path)
+
+    def bfs(self):
+        queue = []
+        for node, ppts in self.graph.items():
+            if ppts['partition'] != 1:
+                continue
+            if ppts['bound_to'] == None:
+                ppts['dist'] = 0
+                queue.append(node)
+            else:
+                ppts['dist'] = float('inf')
+        
+        self.graph[None]['dist'] = float('inf')
+        while queue:
+            node = queue.pop(0)
+            if self.graph[node]['dist'] < self.graph[None]['dist']:
+                for v in self.graph[node]['neighbors']:
+                    if self.graph[v]['partition'] == 2:
+                        if self.graph[self.graph[v]['bound_to']]['dist'] == float('inf'):
+                            self.graph[self.graph[v]['bound_to']]['dist'] = self.graph[node]['dist'] + 1
+                            queue.append(self.graph[v]['bound_to'])
+        
+        return self.graph[None]['dist'] != float('inf')
+    
+    def dfs(self, node):
+        if node is None:
+            return True
+
+        for v in self.graph[node]['neighbors']:
+            if self.graph[v]['partition'] == 1:
+                continue
+            if self.graph[self.graph[v]['bound_to']]['dist'] == self.graph[node]['dist'] + 1:
+                if self.dfs(self.graph[v]['bound_to']):
+                    self.graph[node]['bound_to'] = v
+                    self.graph[v]['bound_to'] = node
+                    return True
+        
+        self.graph[node]['dist'] = float('inf')
+        return False
+
+    def launch_hopcroft_karp(self):
+        matching = 0
+
+        self.graph[None] = {
+                'neighbors' : set(),
+                'partition'  : 2,
+                'coordinates': [0, 0],
+                'bound_to': None,
+                'dist'    : 0
+            }
+
+        while self.bfs():
+            for node in self.graph:
+                if self.graph[node]['partition'] != 1:
+                    continue
+                if self.graph[node]['bound_to'] == None and self.dfs(node):
+                    matching += 1
+        
+        del self.graph[None]
+
+        return matching
+
+def nuclei_from_fluo(stack_fluo_nuclei):
+    """
+    Produces a segmentation of nuclei based on the nuclei marking (either a single slice or a stack).
+
+    Args:
+        An image or a stack representing the nuclei marking.
+    
+    Results:
+        The MIP of the provided image and a labeled version of nuclei.
+    """
+    # Opening fluo spots stack
     stack_sz    = stack_fluo_nuclei.shape
     fluo_nuclei = None
 
-    # >>> Max projection of the stack
+    # Max projection of the stack
     if len(stack_sz) > 2: # We have a stack, not a single image.
         fluo_nuclei = np.max(stack_fluo_nuclei, axis=0)
     else:
@@ -383,102 +637,323 @@ def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage, thresh
     mask_nuclei = fluo_nuclei > t
     lbl_nuclei = connected_compos_labeling(mask_nuclei)
 
-    # Dict giving, for each nucleus index, every cell index it participates in.
-    # It allows to check which nuclei fall in the background, which ones are in a dividing cell, ...
-    participations_cells = {}
-    # Dict giving, for each cell index, every nuclei it participates in.
-    # This is used to check errors where some cells visually have several nuclei.
-    participation_nuclei = {}
-    # Dict giving for each tuple (nucleus index, cell index), the number of pixels in the intersection.
-    intersection_area = {}
+    return fluo_nuclei, lbl_nuclei
 
-    # For each nuclei, which cells is it involved in?
-    for (l, c), idx_n in np.ndenumerate(lbl_nuclei):
-        if idx_n == 0:
+def is_undirected(graph):
+    for key, ns in graph.items():
+        for n in ns:
+            if key not in graph[n]:
+                return False
+    return True
+
+def get_neighbors(l, c, height, width):
+    global _coordinates
+    new_coordinates = [(l+y, c+x) for (y, x) in _coordinates]
+    return np.array([(y, x) for (y, x) in new_coordinates if (y >= 0) and (x >= 0) and (y < height) and (x < width)]).T
+
+def adjacency_graph(labeled_cells, check_undirected=False):
+    """
+    Creates the adjacency graph of the segmented cells.
+    Two cells are called "adjacent" if their labels are touching one another in 8-connectivity.
+
+    Args:
+        labeled_cells: The labeled image representing segmented cells.
+        check_undirected: Activate the cheking of the graph essential properties (only for debug purposes).
+    
+    Returns:
+        A dictionary representing the cells as a graph, indexed by cells' labels.
+        For each label, gives: its location and its neighbors
+    """
+    
+    height, width = labeled_cells.shape
+    graph    = {}
+    contacts = {}
+
+    for (l, c), cell_label in np.ndenumerate(labeled_cells):
+        if cell_label == 0:
             continue
-        idx_c = labeled_yeasts[l, c]
-        participations_cells.setdefault(idx_n, set()).add(idx_c)
-        participation_nuclei.setdefault(idx_c, set()).add(idx_n)
-        intersection_area.setdefault((idx_c, idx_n), 0)
-        intersection_area[(idx_c, idx_n)] += 1
+        graph.setdefault(cell_label, set())
+        ys, xs = get_neighbors(l, c, height, width)
+        labels = labeled_cells[ys, xs]
 
-    hist_nuclei, _ = np.histogram(lbl_nuclei, bins=np.max(lbl_nuclei)+1)
-    hist_yeasts, _ = np.histogram(labeled_yeasts, bins=np.max(labeled_yeasts)+1)
+        for lbl in labels:
+            if (lbl > 0) and (lbl != cell_label):
+                tpl = (lbl, cell_label) if (lbl < cell_label) else (cell_label, lbl)
+                contacts.setdefault(tpl, 0)
+                contacts[tpl] += 1
+                graph[cell_label].add(lbl)
+    
+    for (a, b), count in contacts.items(): # We cut the edge if the contact surface is too small.
+        if count < 50:
+            graph[a].remove(b)
+            graph[b].remove(a)
 
-    # Calculating all the nuclei that must be discarded.
-    discarded = set()
-    for idx_n, cells in participations_cells.items():
-        # If the nuclei is smaller than a threshold in pixels.
-        if hist_nuclei[idx_n] < threshold_size_nucleus:
-            discarded.add(idx_n)
+    if check_undirected:
+        if is_undirected(graph):
+            print(colored("The graph is undirected.", 'green'))
+        else:
+            print(colored("Error. The graph is not undirected.", 'red'))
+
+    regions = regionprops(labeled_cells)
+    cleaned = {}
+    for cell in regions:
+        cleaned[cell.label] = {'neighbors': graph[cell.label], 'coordinates': [i for i in cell.centroid]}
+
+    return cleaned
+
+def remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold):
+    """
+    Removing cells in which the nucleus occupies too much surface (dead cell).
+    """
+    
+    #
+    # Principle:
+    #     1. Transform nuclei into mask
+    #     2. Create a new image which is a copy of the cells from which we subtract our mask
+    #     3. Measure the area of cells labels in both images
+    #     4. Make the ratio to determine what was the region occupied by the nucleus in each cell.
+    #
+    
+    mask_nuclei = labeled_nuclei > 0
+    remaining_cells = np.copy(labeled_cells)
+    remaining_cells[mask_nuclei] = 0 # We punch holes in cells.
+    regions_before = {r['label']: (
+        r['area'], 
+        r['centroid'], 
+        sorted([(count, unq) for unq, count in zip(*np.unique(r['image_intensity'], return_counts=True)) if (unq != 0)])
+        ) for r in regionprops(labeled_cells, intensity_image=labeled_nuclei)}
+    
+    regions_after    = {r['label']: (r['area'], r['centroid']) for r in regionprops(remaining_cells)}
+    discarded_cells  = set()
+    discarded_nuclei = set()
+
+    for cell_lbl, cell_props in regions_before.items():
+        c = regions_after.get(cell_lbl)
+        if c is None: # The cell was completly obliterated and doesn't exist anymore.
+            discarded_cells.add(cell_lbl)
             continue
-        # If the nuclei has more than 10 of its pixels in the background.
-        if (0 in cells) and (intersection_area[(0, idx_n)] >= 10):
-            discarded.add(idx_n)
+        ratio = c[0] / cell_props[0] # area_after / area_before
+        if ratio < covering_threshold:
+            discarded_cells.add(cell_lbl)
+            if len(cell_props[2]) > 0:
+                discarded_nuclei.add(cell_props[2][-1][1])
+    
+    print(f"{len(discarded_cells)} cells were discarded due to their nucleus covering them.")
+    remove_labels(labeled_cells, discarded_cells)
+    remove_labels(labeled_nuclei, discarded_nuclei)
+    
+    return discarded_cells, discarded_nuclei
+
+
+def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold=0.7, graph=None):
+    
+    # 1. We remove cells covered too much by some nuclei.
+    discarded_cells, discarded_nuclei = remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold)
+
+    # 2. Defining variables.
+    nucleus_to_cells = [None for _ in range(max(max(discarded_nuclei.union({0})), np.max(labeled_nuclei))+1)]
+    cell_to_nuclei   = [{
+                    'users' : set(), # Nuclei overlaping with this cell.
+                    'valid' : True,  # Boolean indicating if the cell will be discarded.
+                    'owner' : 0,     # Nucleus owning this cell.
+                    'stable': False, # True if we found a nucleus belonging ONLY to this cell (not shared with another).
+                    'center': False  # True if the centroid of a nucleus was found in this cell.
+                } for _ in range(max(max(discarded_cells.union({0})), np.max(labeled_cells))+1)]
+
+    # 3. Building an association table in both ways (nucleus -> cells & cell -> nuclei)
+    nuclei_props  = regionprops(labeled_nuclei, intensity_image=labeled_cells)
+    for nucleus in nuclei_props: # In this loop, we iterate through nuclei to find by how many cells it's being used.
+        nucleus_lbl = nucleus.label
+        l, c        = [int(k) for k in nucleus.centroid]
+        cell_lbl    = labeled_cells[l, c]
+
+        mask = np.logical_not(nucleus['image'])
+        data = nucleus['intensity_image']
+        data[mask]  = 0
+        unq, counts = np.unique(data, return_counts=True)
+        cell_labels = set([(i, c) for i, c in zip(unq, counts) if (i != 0 and c >= 15)]) # Labels of all the cells this nucleus intersects with.
+
+        # Recording which cells the nucleus participates in
+        nucleus_to_cells[nucleus_lbl] = {
+            'users'   : cell_labels,
+            'centroid': (l, c),
+            'at'      : cell_lbl,
+            'valid'   : True,
+            'used'    : 0
+        }
+
+        # Recording which nuclei a given cell uses.
+        for lbl, count in cell_labels:
+            cell_to_nuclei[lbl]['users'].add(nucleus_lbl)
+                
+    # 4. Validation phase
+    for nucleus_lbl, nucleus_props in enumerate(nucleus_to_cells):
+        
+        # No nucleus with this label or nucleus already discarded.
+        if (nucleus_props is None) or (nucleus_props['valid'] == False):
             continue
-        # If the nuclei participates in more than 2 cells.
-        if len(cells) not in {1, 2}:
-            discarded.add(idx_n)
+        
+        # An isolated nucleus (falling in the background) can be discarded.
+        if len(nucleus_props['users']) == 0:
+            nucleus_props['valid'] = False
             continue
 
-    for idx_c, nuclei in participation_nuclei.items():
-        # If a cell is intersected by several nuclei
-        if len(nuclei) != 1:
-            discarded = discarded.union(set(nuclei))
+        # Nucleus that participates in only one cell (fragmented nucleus, stable cell, ...)
+        if len(nucleus_props['users']) == 1: 
+            cell_lbl  = list(nucleus_props['users'])[0][0]
+            cell_ppts = cell_to_nuclei[cell_lbl]
 
-    # Remove nuclei that cover over 75% of their cell's surface.
-    for idx_n, cells in participations_cells.items():
-        for idx_c in cells:
-            if hist_nuclei[idx_n] / hist_yeasts[idx_c] > threshold_coverage:
-                discarded.add(idx_n)
+            if not cell_ppts['valid']: # The only cell it participates in is not valid.
+                nucleus_props['valid'] = False
+                continue
+            
+            if (cell_ppts['owner'] != 0):
+                if (cell_ppts['stable']): # The cell already has an owner: we are on a fragmented nucleus
+                    cell_ppts['valid']  = False
+                    cell_ppts['stable'] = False
+                    continue
+                else: # There was simply another nucleus intersecting before
+                    nucleus_to_cells[cell_ppts['owner']]['used'] -= 1
 
-    # Removing labels corresponding to invalid nuclei.
-    discarded_arr = np.array([i for i in discarded])
-    removed_mask  = np.isin(lbl_nuclei, discarded_arr)
-    lbl_nuclei[removed_mask] = 0
+            cell_ppts['owner']  = nucleus_lbl
+            cell_ppts['stable'] = True
+            cell_ppts['center'] = True
+            nucleus_props['used'] += 1
+        
+        # There are several cells overlaping with this nucleus
+        else:
+            main_cell = nucleus_props['at']
+            for cell_lbl, count in nucleus_props['users']:
+                cell_ppts = cell_to_nuclei[cell_lbl]
+                
+                if cell_ppts['stable'] or cell_ppts['center']:
+                    continue
 
-    # Removing cells in contact with invalid nuclei.
-    mask_nuclei     = lbl_nuclei > 0
-    lbl_yeasts_copy = np.copy(labeled_yeasts)
-    lbl_yeasts_copy[np.logical_not(mask_nuclei)] = 0
-    valid_labels    = np.unique(lbl_yeasts_copy)
-    valid_cells     = np.copy(labeled_yeasts)
-    removed_mask    = np.isin(valid_cells, valid_labels, invert=True)
-    valid_cells[removed_mask] = 0
+                if cell_ppts['owner'] > 0:
+                    nucleus_to_cells[cell_ppts['owner']]['used'] -= 1
 
-    # Modifying cells' labels to assemble dividing cells.
-    canvas = np.zeros(valid_cells.shape, dtype=np.int64)
-    for idx_n, cells in participations_cells.items():
-        for idx_c in cells:
-            if idx_c > 0:
-                canvas += np.where(valid_cells == idx_c, idx_n, 0)
-    canvas = canvas.astype(np.uint16)
-    return fluo_nuclei, canvas, lbl_nuclei # Fixed segmented yeasts and segmented nuclei.
+                cell_ppts['owner']  = nucleus_lbl
+                nucleus_props['used'] += 1
+                cell_ppts['center'] = (cell_lbl == main_cell)
+
+    
+    for nucleus_lbl, nucleus_props in enumerate(nucleus_to_cells): # Droping nuclei participating in 0 or more than 2 cells.
+        if nucleus_props is None:
+            continue
+        if nucleus_props['used'] > 2:
+            for user, count in nucleus_props['users']:
+                if cell_to_nuclei[user]['owner'] == nucleus_lbl:
+                    cell_to_nuclei[user]['owner'] = 0
+            
+            nucleus_props['used'] = 0
+            usages = sorted(list(nucleus_props['users']), key=lambda x: x[1])
+            
+            cell1, count1 = usages[0]
+            cell_to_nuclei[cell1]['owner'] = nucleus_lbl
+            nucleus_props['used'] += 1
+
+            cell2, count2 = usages[1]
+            if count2 >= 0.5 * count1:
+                cell_to_nuclei[cell2]['owner'] = nucleus_lbl
+                nucleus_props['used'] += 1
+
+    return labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells
+
+
+def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
+    labeled_yeasts = np.copy(labeled_yeasts)
+    flattened_nuclei, labeled_nuclei = nuclei_from_fluo(stack_fluo_nuclei)
+    graph = adjacency_graph(labeled_yeasts)
+
+    labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells = assign_nucleus(labeled_yeasts, labeled_nuclei, threshold_coverage, graph)
+    
+    ypg = YeastsPartitionGraph(graph, cell_to_nuclei, nucleus_to_cells, labeled_yeasts, labeled_nuclei)
+
+    return flattened_nuclei, labeled_yeasts, labeled_nuclei
+
 
 def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots, spots_list):
-    pass
+    # On divise la taille dans le noyau par la taille totale. La valeur de base est la taille totale.
+    # Quand le spot est totalement dans le noyau, on aura un ratio de 1.0.
+    total_regions  = regionprops(labeled_cells, intensity_image=labeled_spots)
+    nuclei_regions = regionprops(labeled_nuclei, intensity_image=labeled_spots)
+    total_sizes   = {}
 
-def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots, indices):
+    # Extracting total size of every spot.
+    for region in total_regions:
+        vals, counts = np.unique(region.image_intensity, return_counts=True)
+        for spot_label, count in zip(vals, counts):
+            total_sizes[spot_label] = count
+    
+    nuclear_sizes = {k: 0 for k in total_sizes.keys()}
+    for region in nuclei_regions:
+        vals, counts = np.unique(region.image_intensity, return_counts=True)
+        for spot_label, count in zip(vals, counts):
+            nuclear_sizes[spot_label] = count
+    
+    classification = {k: 'UNDEFINED' for k in total_sizes.keys()}
+    for label, total_count in total_sizes.items():
+        ratio = nuclear_sizes[label] / total_count
+        if (ratio > 0.99):
+            classification[label] = 'NUCLEAR'
+        elif (ratio <= 0.001):
+            classification[label] = 'CYTOPLASMIC'
+        else:
+            classification[label] = 'PERIPHERAL'
+    
+    return classification
+
+def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots, indices, labeled_nuclei, nuclei_fluo, spots_colors):
     present = datetime.now()
 
-    # Export projections.
+    # Projection of brightfield
     imsave(
         os.path.join(control_dir_path, name+"_bf.tif"),
         projection_cells)
-    imsave(
-        os.path.join(control_dir_path, name+"_fluo.tif"),
-        contrast_stretching(projection_spots, 0.001))
 
-    # Create outlines of cells, save them along labeled cells.
-    outlines = make_outlines(labeled_cells)
-    indices  = indices > 0
-    outlines = np.logical_or(outlines, indices)
+    # Projection of spots fluo
     imsave(
-        os.path.join(control_dir_path, name+"_outlines.tif"),
-        outlines)
+        os.path.join(control_dir_path, name+"_fluo_spots.tif"),
+        projection_spots)
+
+    # Projections of nuclei fluo
+    if nuclei_fluo is not None:
+        imsave(
+            os.path.join(control_dir_path, name+"_fluo_nuclei.tif"),
+            nuclei_fluo)
+
+    # ----
+
+    # Cells indices
     imsave(
-        os.path.join(control_dir_path, name+"_cells.tif"),
+        os.path.join(control_dir_path, name+"_indices.tif"),
+        indices)
+
+    # ----
+    
+    # Labeled cells
+    imsave(
+        os.path.join(control_dir_path, name+"_segmented_cells.tif"),
         labeled_cells)
+
+    # labeled spots
+    imsave(
+        os.path.join(control_dir_path, name+"_segmented_spots.tif"),
+        labeled_spots)
+
+    # Labeled nuclei
+    if labeled_nuclei is not None:
+        imsave(
+            os.path.join(control_dir_path, name+"_segmented_nuclei.tif"),
+            labeled_nuclei)
+
+    # Class of the spots
+    if spots_colors is not None:
+        with open(os.path.join(control_dir_path, name+"_spots_colors.txt"), 'w') as f:
+            textual = "\n".join(spots_colors)
+            f.write(textual)
+    
+    # ----
 
     # Create the CSV with spots list, save it along segmented spots
     np.savetxt(
@@ -486,9 +961,6 @@ def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_
         spots_list,
         delimiter=',',
         header="axis-0, axis-1")
-    imsave(
-        os.path.join(control_dir_path, name+"_spots.tif"),
-        labeled_spots)
 
     # Saving the index to read the folder
     f = open(os.path.join(control_dir_path, "index.txt"), 'w')

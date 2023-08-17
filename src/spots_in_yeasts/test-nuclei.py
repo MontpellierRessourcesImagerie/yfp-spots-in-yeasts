@@ -1,24 +1,17 @@
 from skimage.filters import threshold_otsu
-from skimage.measure import label
-import matplotlib.pyplot as plt
-from skimage.io import imshow, imsave
-from matplotlib.colors import ListedColormap
+from skimage.measure import label as connected_compos_labeling
 from skimage.measure import regionprops
 import numpy as np
-import sys
-from skimage.measure import label as connected_compos_labeling
-from random import randrange
 from skimage.segmentation import find_boundaries, clear_border
 from scipy.ndimage import binary_erosion, binary_dilation
 from termcolor import colored
+import sys
+import matplotlib.pyplot as plt
+from skimage.io import imshow, imsave
+from matplotlib.colors import ListedColormap
 
-def export_to_file(s, path="/home/benedetti/Bureau/dump.txt"):
-    with open(path, 'a') as f:
-        f.write(str(s))
 
-out_descr = None
-
-_coordinates = [
+_coordinates = {
     (-1, -1),
     (-1, 0),
     (-1, 1),
@@ -27,7 +20,7 @@ _coordinates = [
     (1, -1),
     (1, 0),
     (1, 1)
-]
+}
 
 def remove_labels(image, labels):
     lbls = np.array([l for l in labels])
@@ -45,7 +38,7 @@ def fill_holes(image):
     Returns:
         The same image as input but without holes in labels.
     """
-    bg_mask = clear_border(label(binary_dilation(image == 0))).astype(np.uint16)
+    bg_mask = clear_border(connected_compos_labeling(binary_dilation(image == 0))).astype(np.uint16)
     props   = regionprops(bg_mask, intensity_image=image)
 
     lut = {}
@@ -182,6 +175,9 @@ class YeastsPartitionGraph(object):
     # mode in {'partition', 'bound_to'}
     def draw_graph(self, width_pixels, height_pixels, mode='partition', path=None):
         import networkx as nx
+        import matplotlib.pyplot as plt
+        from skimage.io import imshow, imsave
+
         plt.clf()
         plt.close()
 
@@ -553,46 +549,24 @@ def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold=0.7, graph=
     return labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells
 
 
-def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage, threshold_size_nucleus):
+def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
     # Segmentation of nuclei
     flattened_nuclei, labeled_nuclei = nuclei_from_fluo(stack_fluo_nuclei)
     # Adjacency graph of cells
     graph = adjacency_graph(labeled_yeasts)
     # Attributing each nucleus to a cell, and cleaning non-senses (cell with several nuclei, ...).
     labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells = assign_nucleus(labeled_yeasts, labeled_nuclei, threshold_coverage, graph)
-
     # Merging cells in division phase and cleaning
     ypg = YeastsPartitionGraph(graph, cell_to_nuclei, nucleus_to_cells, labeled_yeasts, labeled_nuclei)
+    
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    viewer.layers['labeled-cells-test'].data  = labeled_yeasts
-    viewer.layers['labeled-nuclei-test'].data = labeled_nuclei
+    # viewer.layers['labeled-cells-test'].data  = labeled_yeasts
+    # viewer.layers['labeled-nuclei-test'].data = labeled_nuclei
 
 
 
 def main():
-
-    global out_descr
-    out_descr = open("/home/benedetti/Bureau/dump.txt", 'w')
-    labeled_yeasts = np.copy(viewer.layers['labeled-cells'].data)
-    fluo_nuclei    = np.copy(viewer.layers['fluo-nuclei'].data)
-    
-    if 'labeled-cells-test' not in viewer.layers:
-        viewer.add_labels(
-            np.zeros(labeled_yeasts.shape, dtype=labeled_yeasts.dtype),
-            name='labeled-cells-test'
-        )
-    if 'labeled-nuclei-test' not in viewer.layers:
-        viewer.add_labels(
-            np.zeros(labeled_yeasts.shape, dtype=labeled_yeasts.dtype),
-            name='labeled-nuclei-test'
-        )
-    # - - - - - - - - - - - - - - - - - - -
-
-    segment_nuclei(labeled_yeasts, fluo_nuclei, 0.75, 150)
-
-    # - - - - - - - - - - - - - - - - - - -
-    out_descr.close()
-    out_descr = None
+    print("It works!")
 
 
 import time
@@ -602,6 +576,8 @@ for i in range(1):
     start = time.time()
     main()
     stamps.append(time.time() - start)
+
+
 
 
 """

@@ -41,18 +41,21 @@ def reader_function(paths):
     for (key, value) in data:
         properties[key] = value
 
-    print(f"Loaded control for: {properties['name']}")
+    print(f"Loaded control for:       {properties['name']}")
     print(f"Original images location: {properties['sources']}")
-    print(f"Process performed on: {properties['time']}")
+    print(f"Process performed on:     {properties['time']}")
 
     control_paths = {
-        'spots_list'     : os.path.join(path, properties['name']+".csv"),
-        'outlines'       : os.path.join(path, properties['name']+"_outlines.tif"),
-        'labeled_cells'  : os.path.join(path, properties['name']+"_cells.tif"),
-        'labeled_spots'  : os.path.join(path, properties['name']+"_spots.tif"),
-        'projected_cells': os.path.join(path, properties['name']+"_bf.tif"),
-        'projected_spots': os.path.join(path, properties['name']+"_fluo.tif"),
-        'measures'       : os.path.join(path, properties['name']+".json")
+        'spots_list'      : os.path.join(path, properties['name']+".csv"),
+        'labeled_cells'   : os.path.join(path, properties['name']+"_segmented_cells.tif"),
+        'labeled_spots'   : os.path.join(path, properties['name']+"_segmented_spots.tif"),
+        'labeled_nuclei'  : os.path.join(path, properties['name']+"_segmented_nuclei.tif"),
+        'projected_cells' : os.path.join(path, properties['name']+"_bf.tif"),
+        'projected_spots' : os.path.join(path, properties['name']+"_fluo_spots.tif"),
+        'projected_nuclei': os.path.join(path, properties['name']+"_fluo_nuclei.tif"),
+        'spots_colors'    : os.path.join(path, properties['name']+"_spots_colors.txt"),
+        'cells_indices'   : os.path.join(path, properties['name']+"_indices.tif"),
+        'measures'        : os.path.join(path, properties['name']+".json")
     }
 
     # Removing unavailable paths
@@ -73,9 +76,22 @@ def reader_function(paths):
         components.append((
             imread(projected_cells), 
             {
-                'name': "projected_cells"
+                'name': "projected-cells"
             },
             "image"
+        ))
+
+    # ======================= PROJECTED NUCLEI =======================
+    projected_nuclei = control_paths.get('projected_nuclei')
+    if projected_nuclei is not None:
+        components.append((
+            imread(projected_nuclei), 
+            {
+                'name': "fluo-nuclei",
+                'blending': 'opaque',
+                'colormap': 'cyan'
+            }, 
+            'image'
         ))
 
     # ======================= PROJECTED SPOTS =======================
@@ -85,7 +101,8 @@ def reader_function(paths):
             imread(projected_spots), 
             {
                 'name': "fluo-spots",
-                'blending': 'opaque'
+                'blending': 'opaque',
+                'colormap': 'yellow'
             }, 
             'image'
         ))
@@ -96,12 +113,43 @@ def reader_function(paths):
         components.append((
             imread(labeled_spots), 
             {
-                'name'   : "labeled_spots",
+                'name'   : "labeled-spots",
                 'visible': False,
                 'opacity': 1.0
             }, 
             "labels"
         ))
+    
+    # ======================= LABELED CELLS =======================
+    labeled_cells = control_paths.get('labeled_cells')
+    if labeled_cells is not None:
+        components.append((
+            imread(labeled_cells), 
+            {
+                'name': "labeled-cells"
+            }, 
+            "labels"
+        ))
+    
+    # ======================= LABELED NUCLEI =======================
+    labeled_nuclei = control_paths.get('labeled_nuclei')
+    if labeled_nuclei is not None:
+        components.append((
+            imread(labeled_nuclei), 
+            {
+                'name'   : "labeled-nuclei"
+            }, 
+            "labels"
+        ))
+
+    # ======================= SPOTS COLORS ==========================
+    spots_colors = control_paths.get('spots_colors')
+    face_colors  = '#00000000'
+    edge_colors  = '#ffffffff'
+
+    if spots_colors is not None:
+        with open(spots_colors, 'r') as f:
+            edge_colors = [f.read().split('\n')]
 
     # ======================= SPOTS LOCATIONS =======================
     spots_list = control_paths.get('spots_list')
@@ -109,23 +157,25 @@ def reader_function(paths):
         components.append((
             np.loadtxt(spots_list, delimiter=',', skiprows=1, dtype=int), 
             {
-                'name'      : "spots",
+                'name'      : "spots-positions",
                 'edge_color': "#ff0000ff",
-                'face_color': "#00000000"
+                'face_color': face_colors,
+                'edge_color': edge_colors
             },
             "points"
         ))
-
-    # ======================= CELLS OUTLINES =======================
-    outlines = control_paths.get('outlines')
-    if outlines is not None:
+    
+    # ======================= PROJECTED SPOTS =======================
+    cells_indices = control_paths.get('cells_indices')
+    if cells_indices is not None:
         components.append((
-            imread(outlines), 
+            imread(cells_indices), 
             {
-                'name'    : "outlines",
-                'blending': "additive"
-            },
-            "image"
+                'name': "cells-indices",
+                'blending': 'additive',
+                'visible': False
+            }, 
+            'image'
         ))
 
     return components
