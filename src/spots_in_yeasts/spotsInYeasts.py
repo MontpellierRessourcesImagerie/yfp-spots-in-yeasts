@@ -38,23 +38,17 @@ def create_random_lut():
     return LinearSegmentedColormap.from_list('random_lut', np.vstack((np.array([(0.0, 0.0, 0.0)]), np.random.uniform(0.01, 1.0, (255, 3)))))
 
 
-def make_outlines(labeled_cells, thickness=2):
+def write_labels_image(image, font_scale):
     """
-    Turns a labeled image into a mask showing the outline of each label.
-    The resulting image is boolean. (==mask)
+    Creates an image on which the indices of labels are literally written in the center of each label.
 
     Args:
-        labeled_cells: The image containing labels.
-        thickness: The desired thickness of outlines.
+        image: A labeled image.
+        fonst_scale: Size of the font to write digits.
     
     Returns:
-        numpy.array: A mask representing outlines of cells.
+        A binary mask representing the literal index of each label.
     """
-    dilated = dilation(labeled_cells, disk(thickness)) - labeled_cells
-    return dilated > 0
-
-
-def write_labels_image(image, font_scale):
     regions   = regionprops(image)
     canvas    = np.zeros(image.shape, dtype=np.uint8)
     thickness = 2
@@ -113,42 +107,8 @@ def segment_yeasts_cells(transmission, gpu=True):
     chan = [0, 0]
     print("Segmenting cells...")
     masks, flows, styles, diams = model.eval(transmission, diameter=None, channels=chan)
-    print("Cells segmentation done.")
+    print(f"Cells segmentation done. {len(np.unique(masks))-1} cells detected.")
     return masks
-
-
-def contrast_stretching(image, percentile=0.1):
-    """
-    Contrast stretching by skipping a certain percentile of the histogram before rescaling the values.
-
-    Args:
-        image: The original image
-        percentile: Percentile of values skipped on each side of the histogram.
-
-    Returns:
-        image: An image with contrast enhanced.
-    """
-    vmin, vmax = np.percentile(image, [percentile, 100 - percentile])
-    return exposure.rescale_intensity(image, in_range=(vmin, vmax))
-
-
-def increase_contrast(image, targetType=np.uint16):
-    """
-    The resulting image occupies the whole range of possible values according to its data type (uint8, uint16, ...)
-
-    Returns:
-        void
-
-    Args:
-        image: The image that will beneficiate of a contrast enhancement
-    """
-    image = image.astype(np.float64)
-    image -= image.min()
-    image /= image.max()
-    image *= np.iinfo(targetType).max
-    image = image.astype(targetType)
-    
-    return image
 
 
 def place_markers(shp, m_list):
@@ -165,7 +125,7 @@ def place_markers(shp, m_list):
     tmp = np.zeros(shp, dtype=np.uint16)
     for i, (l, c) in enumerate(m_list, start=1):
         tmp[l, c] = i
-    print(f"{len(m_list)} markers placed.")
+    print(f"{len(m_list)} seeds placed.")
     return tmp
 
 
@@ -204,12 +164,6 @@ def segment_transmission(stack, gpu=True, slices_around=2):
     
     # >>> Labeling the transmission channel:
     labeled_transmission = segment_yeasts_cells(input_bf, gpu)
-
-    # >>> Finding and removing the labels touching the borders:
-    # nCellsBefore = len(np.unique(labeled_transmission))-1
-    # cleared_bd   = clear_border(labeled_transmission, buffer_size=3)
-    # nCellsAfter  = len(np.unique(cleared_bd))-1
-    # print(colored(f"{nCellsBefore-nCellsAfter} cells discarded due to border. {nCellsAfter} cells remaining.", 'yellow'))
 
     return labeled_transmission, input_bf
 
@@ -284,7 +238,6 @@ def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5):
          - mask: A labeled image containing an index per detected spot.
          - locations: A list of 2D coordinates representing each spot.
     """
-
     # >>> Opening fluo spots stack
     stack_sz     = stack.shape
     input_fSpots = None
@@ -407,6 +360,7 @@ class YeastsPartitionGraph(object):
         self.launch_hopcroft_karp()
         self.make_new_labels(labeled_yeasts, labeled_nuclei, cell_to_nuclei)
         self.remove_borders(labeled_yeasts, labeled_nuclei)
+        print(colored("Maximum bipartite matching of the adjacency graph finished.", 'green'))
 
     def remove_borders(self, labeled_yeasts, labeled_nuclei):
         mask = binary_erosion(np.zeros(labeled_yeasts.shape) == 0)
@@ -416,6 +370,7 @@ class YeastsPartitionGraph(object):
         discarded   = np.array([i for i in set(np.unique(working_copy)).difference({0})])
         remove_labels(labeled_yeasts, discarded)
         remove_labels(labeled_nuclei, discarded)
+        print(f"{len(discarded)} cells removed because they are cut by the border.")
     
     def find_partition(self, vertex, cell_to_nuclei, nucleus_to_cells, o_graph):
         nucleus_lbl = cell_to_nuclei[vertex]['owner']
@@ -485,71 +440,7 @@ class YeastsPartitionGraph(object):
         vfunc = np.vectorize(replace_nuclei_labels)
         new_nuclei = vfunc(old_nuclei)
         old_nuclei[:] = new_nuclei.astype(np.int32)
-
-    def show(self):
-        from pprint import pprint
-        pprint(self.graph, stream=out_descr)
-    
-    # mode in {'partition', 'bound_to'}
-    def draw_graph(self, width_pixels, height_pixels, mode='partition', path=None):
-        import networkx as nx
-        import matplotlib.pyplot as plt
-        from skimage.io import imshow, imsave
-
-        plt.clf()
-        plt.close()
-
-        G = nx.Graph()
-        if mode == 'partition':
-            G.add_nodes_from([(key, {'pos': (props['coordinates'][0], height_pixels-props['coordinates'][1]), 'color': '#eb4034' if props['partition'] == 1 else '#4287f5'}) for key, props in self.graph.items() if key is not None])
-        elif mode == 'bound_to':
-            lut = {}
-            for key, props in self.graph.items():
-                color = lut.get(key)
-                if color is None:
-                    color = generate_random_color()
-                    lut[key] = color
-                    lut[props['bound_to']] = color
-                position = props['coordinates']
-                G.add_node(
-                    key, 
-                    pos=(position[0], height_pixels-position[1]),
-                    color=color
-                )
-        else:
-            raise ValueError(mode + ' is not a valid value.')
-
-        for key, ppts in self.graph.items():
-            for n in ppts['neighbors']:
-                G.add_edge(key, n)
-
-        pos = nx.get_node_attributes(G, 'pos')
-        color = list(nx.get_node_attributes(G, 'color').values())
-        
-        dpi = 100
-
-        # Convertir les pixels en pouces
-        width_inches = width_pixels / dpi
-        height_inches = height_pixels / dpi
-
-        # Créer la figure avec la taille spécifiée
-        fig = plt.figure(figsize=(width_inches, height_inches), dpi=dpi)
-
-        if mode == 'partition':
-            labels = {i: i for i in self.graph.keys()}
-        elif mode == 'bound_to':
-            labels = {i: ("" if b['bound_to'] is None else b['bound_to']) for i, b in self.graph.items()}
-
-        nx.draw(G, pos, with_labels=True, edge_color='#000000', labels=labels, node_color=color, node_size=650)
-        plt.axhline(y=0, color='black', linewidth=5)
-        plt.axhline(y=height_pixels, color='black', linewidth=5)
-        plt.axvline(x=0, color='black', linewidth=5)
-        plt.axvline(x=width_pixels, color='black', linewidth=5)
-
-        if path is None:
-            plt.show()
-        else:
-            plt.savefig(path)
+        print(f"{len(np.unique(old_nuclei)-1)} cells left after merging mothers and daughters.")
 
     def bfs(self):
         queue = []
@@ -609,8 +500,8 @@ class YeastsPartitionGraph(object):
                     matching += 1
         
         del self.graph[None]
-
         return matching
+
 
 def nuclei_from_fluo(stack_fluo_nuclei):
     """
@@ -668,6 +559,7 @@ def adjacency_graph(labeled_cells, check_undirected=False):
     height, width = labeled_cells.shape
     graph    = {}
     contacts = {}
+    print("Building adjacency graph of the cells.")
 
     for (l, c), cell_label in np.ndenumerate(labeled_cells):
         if cell_label == 0:
@@ -699,6 +591,7 @@ def adjacency_graph(labeled_cells, check_undirected=False):
     for cell in regions:
         cleaned[cell.label] = {'neighbors': graph[cell.label], 'coordinates': [i for i in cell.centroid]}
 
+    print(colored("Adjacency graph succesfully built.", 'green'))
     return cleaned
 
 def remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold):
@@ -864,10 +757,11 @@ def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
     labeled_yeasts = np.copy(labeled_yeasts)
     flattened_nuclei, labeled_nuclei = nuclei_from_fluo(stack_fluo_nuclei)
     graph = adjacency_graph(labeled_yeasts)
-
-    labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells = assign_nucleus(labeled_yeasts, labeled_nuclei, threshold_coverage, graph)
     
+    print("Starting nuclei segmentation.")
+    labeled_cells, labeled_nuclei, graph, cell_to_nuclei, nucleus_to_cells = assign_nucleus(labeled_yeasts, labeled_nuclei, threshold_coverage, graph)
     ypg = YeastsPartitionGraph(graph, cell_to_nuclei, nucleus_to_cells, labeled_yeasts, labeled_nuclei)
+    print(colored("Segmentation of nuclei done.", 'green'))
 
     return flattened_nuclei, labeled_yeasts, labeled_nuclei
 
@@ -901,6 +795,7 @@ def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots, spots_lis
         else:
             classification[label] = 'PERIPHERAL'
     
+    print(colored("Spots classified.", 'green'))
     return classification
 
 def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots, indices, labeled_nuclei, nuclei_fluo, spots_colors):

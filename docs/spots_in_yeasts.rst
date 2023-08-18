@@ -28,6 +28,14 @@ spots\_in\_yeasts.spotsInYeasts module
    :undoc-members:
    :show-inheritance:
 
+spots\_in\_yeasts.test\-nuclei module
+-------------------------------------
+
+.. automodule:: spots_in_yeasts.test-nuclei
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
