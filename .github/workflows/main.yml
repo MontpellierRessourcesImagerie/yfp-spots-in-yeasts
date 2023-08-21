@@ -1,53 +1,45 @@
-name: Build and Deploy Sphinx Documentation
-
+name: Docs
 on:
   push:
     branches:
       - master
-
+      - npe2
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+  pull_request:
+    branches:
+      - main
+      - npe2
+  workflow_dispatch:
+permissions:
+    contents: write
 jobs:
-  build:
+  docs:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
-
-    - name: Install Qt Dependencies
-      run: sudo apt-get install -y libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0
-
-    - name: Install xvfb
-      run: sudo apt-get install -y xvfb
-
-    - name: Install Miniconda
-      run: |
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-
-    - name: Create and Activate Conda Environment
-      run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda create -q -n myenv python=3.9
-        conda activate myenv
-
-    - name: Install Dependencies with Conda
-      run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda activate myenv
-        conda install pip
-        pip install -r docs/requirements.txt
-
-    - name: Build Sphinx Documentation
-      run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda activate myenv
-        cd docs
-        sphinx-apidoc -f -o . ../src
-        make html
-
-    - name: Deploy Sphinx Documentation
-      uses: ammaraskar/sphinx-action@master
-      with:
-        build-command: "echo 'Building already done in previous step'"
-        publish-directory: docs/_build/html
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v2.2.1
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install "napari[all]"
+          pip install -r docs/requirements.txt
+          pip install Sphinx sphinx_rtd_theme
+      - name: Sphinx build
+        run: |
+          pip install .
+          cd ./docs
+          sphinx-apidoc -f -o . ../src
+          make html
+          cd ..
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/build/html
+          force_orphan: true
