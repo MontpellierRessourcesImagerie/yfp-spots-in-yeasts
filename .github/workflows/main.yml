@@ -32,7 +32,7 @@ jobs:
         run: |
           pip install .
           cd ./docs
-          sphinx-apidoc -f -o . ../src
+          sphinx-apidoc -T -f -e -o . ../src
           make html
           cd ..
       - name: Deploy
