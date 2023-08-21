@@ -21,7 +21,7 @@ jobs:
     - name: Initialize Conda
       run: |
         source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda init bash
+        conda init $SHELL
 
     - name: Create and Activate Conda Environment
       run: |
