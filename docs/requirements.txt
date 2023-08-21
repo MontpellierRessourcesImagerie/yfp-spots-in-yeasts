@@ -9,3 +9,4 @@ myst-parser
 magicgui 
 magic-class 
 docstring-parser
+napari[all]
