@@ -13,6 +13,9 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
+    - name: Install Qt Dependencies
+      run: sudo apt-get install -y libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0
+
     - name: Install Miniconda
       run: |
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
