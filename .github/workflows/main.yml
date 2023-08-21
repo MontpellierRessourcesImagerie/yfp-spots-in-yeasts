@@ -36,6 +36,7 @@ jobs:
         source "$HOME/miniconda/etc/profile.d/conda.sh"
         conda activate myenv
         cd docs
+        sphinx-apidoc -f -o . ../src
         make html
 
     - name: Deploy Sphinx Documentation
