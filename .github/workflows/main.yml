@@ -27,7 +27,7 @@ jobs:
         run: |
           pip install "napari[all]"
           pip install qtpy cellpose termcolor
-          pip install Sphinx sphinx_rtd_theme
+          pip install Sphinx sphinx-rtd-theme sphinx-tabs
       - name: Sphinx build
         run: |
           pip install .
