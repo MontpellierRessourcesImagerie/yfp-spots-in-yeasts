@@ -17,9 +17,11 @@ jobs:
       run: |
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
+
+    - name: Initialize Conda
+      run: |
         source "$HOME/miniconda/etc/profile.d/conda.sh"
-        conda config --set always_yes yes --set changeps1 no
-        conda update -q conda
+        conda init bash
 
     - name: Create and Activate Conda Environment
       run: |
@@ -35,10 +37,8 @@ jobs:
 
     - name: Build Sphinx Documentation
       run: |
-        source "$HOME/miniconda/etc/profile.d/conda.sh"
         conda activate myenv
         cd docs
-        sphinx-apidoc -f -o . ../src
         make html
 
     - name: Deploy Sphinx Documentation
