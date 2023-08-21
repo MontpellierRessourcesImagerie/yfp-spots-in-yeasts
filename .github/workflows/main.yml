@@ -1,0 +1,33 @@
+name: Build and Deploy Sphinx Documentation
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build and Deploy Sphinx Documentation
+      uses: ammaraskar/sphinx-action@master
+      with:
+        docs-folder: "docs/"
+        build-command: "make html" # ou la commande que vous utilisez pour construire la documentation
+        build-folder: "docs/_build/html"
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: "gh-pages" # la branche où la documentation sera déployée
