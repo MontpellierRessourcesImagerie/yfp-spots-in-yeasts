@@ -1,3 +1,6 @@
+qtpy
+pyqt5
+pytest
 opencv-python-headless
 napari[all]
 cellpose 
