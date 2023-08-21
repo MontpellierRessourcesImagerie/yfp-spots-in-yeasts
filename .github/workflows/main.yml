@@ -27,7 +27,7 @@ jobs:
         run: sudo apt-get install libxcb-xinerama0
       - name: Install dependencies
         run: |
-          pip install "napari[all]"
+          pip install opencv-python-headless "napari[all]"
           pip install qtpy cellpose termcolor
           pip install Sphinx sphinx-rtd-theme sphinx-tabs myst-parser
       - name: Sphinx build
