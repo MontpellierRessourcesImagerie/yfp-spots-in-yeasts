@@ -1,3 +1,4 @@
+napari[all]
 cellpose 
 scipy 
 termcolor 
@@ -9,4 +10,3 @@ myst-parser
 magicgui 
 magic-class 
 docstring-parser
-napari[all]
