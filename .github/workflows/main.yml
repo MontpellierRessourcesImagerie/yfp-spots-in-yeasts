@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install opencv-python-headless "napari[all]"
-          pip install pyqt cellpose termcolor
+          pip install pyqt5 cellpose termcolor
           pip install Sphinx sphinx-rtd-theme sphinx-tabs myst-parser
       - name: Sphinx build
         run: |
