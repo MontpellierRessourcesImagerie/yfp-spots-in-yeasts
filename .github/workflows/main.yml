@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.9'
 
     - name: Install Dependencies
       run: |
@@ -27,7 +27,7 @@ jobs:
       uses: ammaraskar/sphinx-action@master
       with:
         docs-folder: "docs/"
-        build-command: "make html" # ou la commande que vous utilisez pour construire la documentation
+        build-command: "sphinx-apidoc -f -o . ../src && make html"
         build-folder: "docs/_build/html"
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: "gh-pages" # la branche où la documentation sera déployée
+        branch: "gh-pages"
