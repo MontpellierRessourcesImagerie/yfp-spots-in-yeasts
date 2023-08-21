@@ -577,25 +577,25 @@ class SpotsInYeastsDock:
         exec_start = time.time()
         iteration = 0
         procedure = [
-            self._load,
-            self.split_channels_gui,
-            self.segment_brightfield_gui,
-            self.segment_nuclei_gui,
-            self.segment_spots_gui,
-            self.extract_stats_gui,
-            self._create_control
+            (self._load, "Loading image"),
+            (self.split_channels_gui, "Splitting channels"),
+            (self.segment_brightfield_gui, "Segment cells"),
+            (self.segment_nuclei_gui, "Segment nuclei"),
+            (self.segment_spots_gui, "Segment spots"),
+            (self.extract_stats_gui, "Statistics extraction"),
+            (self._create_control, "Control creation")
         ]
         now = datetime.now()
         date_time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
         self.csvexport   = os.path.join(self.e_path, f"batch-results-{date_time_string}.csv")
 
         while self._next_item():
-            for step in procedure:
+            for i, (step, descr) in enumerate(procedure):
+                print(f"Executing step `{descr}` ({i})")
                 if not step():
-                    print(colored("Failed to process: ", 'red'), end="")
-                    print(colored(self._get_current_name(), 'red', attrs=['underline']), end="")
+                    print(colored(f"Failed step: `{descr}` ", 'red'), end="")
+                    print(colored(f"({self._get_current_name()})", 'red', attrs=['underline']), end="")
                     print(colored(".", 'red'))
-                    break
             
             yield iteration
             iteration += 1
