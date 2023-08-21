@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install "napari[all]"
-          pip install qtpy cellpose termcolor magic-class
+          pip install qtpy cellpose termcolor
           pip install Sphinx sphinx-rtd-theme sphinx-tabs myst-parser
       - name: Sphinx build
         run: |
