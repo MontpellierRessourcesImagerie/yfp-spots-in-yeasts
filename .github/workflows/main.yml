@@ -42,7 +42,7 @@ jobs:
         make html
 
     - name: Deploy Sphinx Documentation
-      uses: seanmiddleditch/gha-publish-to-github-pages@v2
+      uses: ammaraskar/sphinx-action@master
       with:
         build-command: "echo 'Building already done in previous step'"
         publish-directory: docs/_build/html
