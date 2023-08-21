@@ -1,0 +1,11 @@
+cellpose 
+scipy 
+termcolor 
+Sphinx 
+sphinx-rtd-theme 
+sphinx-tabs 
+scikit-image 
+myst-parser 
+magicgui 
+magic-class 
+docstring-parser
