@@ -471,7 +471,7 @@ class SpotsInYeastsDock:
         self._set_image(_f_spots, f_spots)
 
         if self._required_key(_lbl_n): # If we have nuclei, we can classify spots.
-            categories = distance_spot_nuclei(labeled_cells, self._get_image(_lbl_n), labeled_spots, spots_locations)
+            categories = distance_spot_nuclei(labeled_cells, self._get_image(_lbl_n), labeled_spots)
         else:
             categories = None
 

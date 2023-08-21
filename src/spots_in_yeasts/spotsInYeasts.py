@@ -94,8 +94,6 @@ def find_focused_slice(stack, around=2):
 def segment_yeasts_cells(transmission, gpu=True):
     """
     Takes the transmission channel (brightfield) of yeast cells and segments it (instances segmentation).
-    | CPU: 43s
-    | GPU: 11s
     
     Args:
         transmission (image): Single channeled image, in brightfield, representing yeasts
@@ -282,8 +280,10 @@ def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5):
 
 ################################################################
 
-
 def prepare_directory(path):
+    """
+    Prepares a directory to receive the control images for the batch mode.
+    """
     if os.path.exists(path):
         # Empty the folder
         for filename in os.listdir(path):
@@ -303,6 +303,13 @@ def prepare_directory(path):
 ######################################################################
 
 def remove_labels(image, labels):
+    """
+    Macro-function removing some labels from an image. The modification is made in-place.
+
+    Args:
+        image: A labeled image.
+        labels: A set of indices that we want to remove from `image`.
+    """
     lbls = np.array([l for l in labels])
     mask = np.isin(image, lbls)
     image[mask] = 0
@@ -339,6 +346,9 @@ def fill_holes(image):
     return np.maximum(image, new_array)
 
 class YeastsPartitionGraph(object):
+    """
+    Class implementing the Hopcroft-Karp algorithm to create a maximal dual-matching.
+    """
     def __init__(self, o_graph, cell_to_nuclei, nucleus_to_cells, labeled_yeasts, labeled_nuclei):
         self.graph      = dict()
         self.partitions = {1, 2}
@@ -412,6 +422,17 @@ class YeastsPartitionGraph(object):
         return lut
 
     def make_nuclei_lut(self, cell_to_nuclei, cells_lut):
+        """
+        Makes a dictionary to transform the indices of nuclei.
+        It is used to make the nuclei indices match their owner cell's index.
+
+        Args:
+            cell_to_nuclei: Structure giving for a cell the index of its nucleus.
+            cells_lut: LUT used to make mother and daughter cells match each other's label.
+        
+        Returns:
+            A LUT to transform the nuclei indices.
+        """
         lut = {}
         for cell_lbl, cell_props in enumerate(cell_to_nuclei):
             if cell_props['owner'] <= 0:
@@ -531,6 +552,7 @@ def nuclei_from_fluo(stack_fluo_nuclei):
     return fluo_nuclei, lbl_nuclei
 
 def is_undirected(graph):
+    """ Checks whether a graph is undirected or not. """
     for key, ns in graph.items():
         for n in ns:
             if key not in graph[n]:
@@ -597,6 +619,14 @@ def adjacency_graph(labeled_cells, check_undirected=False):
 def remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold):
     """
     Removing cells in which the nucleus occupies too much surface (dead cell).
+
+    Args:
+        labeled_cells: The image containing the labeled cells.
+        labeled_nuclei: The image containing the labeled nuclei.
+        covering_threshold: Percentage of a cell that must be covered by nuclei for this cell to be considered dead.
+    
+    Returns:
+        Two sets containing the indices of discarded nuclei and the indices of discarded cells.
     """
     
     #
@@ -639,6 +669,22 @@ def remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold)
 
 
 def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold=0.7, graph=None):
+    """
+    First step of the nuclei segmentation. It starts by finding all the cells having "their own nucleus" (== a cell overlaped by a nucleus)
+
+    Args:
+        labeled_cells: The image containing the labeled cells.
+        labeled_nuclei: The image containing the labeled nuclei.
+        covering_threshold: Percentage of a cell that must be covered by nuclei for this cell to be considered dead.
+        graph: Adjacency graph of the labeled cells.
+    
+    Returns:
+        - The labeled cells from which we removed invalid individuals.
+        - The labeled nuclei
+        - The adjacency graph from which we removed dead individuals.
+        - A structure mapping cells indices to nuclei indices.
+        - A structure mapping nuclei indices to cells indices.
+    """
     
     # 1. We remove cells covered too much by some nuclei.
     discarded_cells, discarded_nuclei = remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold)
@@ -754,6 +800,19 @@ def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold=0.7, graph=
 
 
 def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
+    """
+    Launches the procedure to segment nuclei from the dedicated fluo channel, and merge mother cells with their daughter if the division process is still ongoing.
+
+    Args:
+        labeled_yeasts: Image containing the labeled yeast cells.
+        stack_fluo_nuclei: Image containing the stained nuclei.
+        threshold_coverage: Percentage (in 0.0; 1.0) of a cell that must be covered by a nucleus to be considered dead.
+    
+    Returns:
+        - The maximal projection of the stained nuclei channel.
+        - The labeled yeasts from which we removed the dead cells.
+        - The image containing the labeled nuclei.
+    """
     labeled_yeasts = np.copy(labeled_yeasts)
     flattened_nuclei, labeled_nuclei = nuclei_from_fluo(stack_fluo_nuclei)
     graph = adjacency_graph(labeled_yeasts)
@@ -766,9 +825,19 @@ def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
     return flattened_nuclei, labeled_yeasts, labeled_nuclei
 
 
-def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots, spots_list):
-    # On divise la taille dans le noyau par la taille totale. La valeur de base est la taille totale.
-    # Quand le spot est totalement dans le noyau, on aura un ratio de 1.0.
+def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots):
+    """
+    Assign a class to every spot depending on its location according to the nucleus of the cell it is in.
+    It can be 'nuclear', 'cytoplasmic' or 'peripheral'.
+
+    Args:
+        labeled_cells: The image containing labeled cells.
+        labeled_nuclei: The image containing labeled nuclei.
+        labeled_spots: The image containing labeled spots.
+    
+    Returns:
+        A dictionary giving for each spot label (int), its category (str).
+    """
     total_regions  = regionprops(labeled_cells, intensity_image=labeled_spots)
     nuclei_regions = regionprops(labeled_nuclei, intensity_image=labeled_spots)
     total_sizes   = {}
@@ -799,6 +868,9 @@ def distance_spot_nuclei(labeled_cells, labeled_nuclei, labeled_spots, spots_lis
     return classification
 
 def create_reference_to(labeled_cells, labeled_spots, spots_list, name, control_dir_path, source_path, projection_cells, projection_spots, indices, labeled_nuclei, nuclei_fluo, spots_colors):
+    """
+    Creates a folder containing everything a user needs to see in order to check whether the process ended correctly and produced a correct segmentation.
+    """
     present = datetime.now()
 
     # Projection of brightfield

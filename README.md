@@ -125,36 +125,6 @@ Distributed under the terms of the [MIT] license,
 If you encounter any problems, please [file an issue] along with a detailed description.
 
 
-## TODO
-
-- [X] Browse all images to determine the optimal number of slices.
-- [X] Determine an implementation to locate and isolate dead cells.
-- [X] Write a clean README to help user install and use the script.
-- [X] Transform the Napari script into a plugin.
-- [X] Implement a GUI-less batch mode (that doesn't show images in the viewer)
-- [ ] Finish writing the unit tests.
-- [X] Move the execution in another thread to avoid the GUI freezing.
-- [X] Add settings for spots detection.
-- [X] Try to make a cleaner GUI.
-- [ ] Use a threshold on the number of spots to detect dead cells.
-- [X] Write a Fiji macro to perform the conversion: ".nd" ---> ".tif".
-- [X] Create a control image at each iteration in batch mode.
-- [ ] Expose settings to: select the number of slices around focus, the distance between peaks.
-- [ ] Make sure the documentation can be generated with Sphinx.
-- [X] Create a reader to ease the controling process.
-- [X] Add a button to load the original image when a control image is opened.
-
-## Future:
-
-- [ ] We would like to be able to remove labels by clicking in the viewer.
-- [ ] We would like to add the possibility to add/remove spots by clicking in the viewer.
-- [ ] Detect and merge mother+daughter yeasts.
-- [ ] Detect and merge cells cut into several labels.
-- [ ] Make a more elaborate GUI with raw Qt rather than magicgui.
-- [ ] Take into account the calibration of images.
-- [ ] Upload to PyPI
-
-
 [napari]: https://github.com/napari/napari
 [Cookiecutter]: https://github.com/audreyr/cookiecutter
 [@napari]: https://github.com/napari

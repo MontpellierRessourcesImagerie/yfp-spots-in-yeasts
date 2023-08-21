@@ -154,9 +154,3 @@ Solidity & Extent
          <td style="padding-top: 50px;">If two spots are convex, their solidity value won't help you describing them since they will both be at 1.0. However, their extent will help you differenciate them.</td>
       </tr>
    </table>
-
-   
-
-   
-
-   
