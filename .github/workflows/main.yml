@@ -24,7 +24,9 @@ jobs:
         with:
           python-version: 3.9
       - name: Install xcb
-        run: sudo apt-get install libx11-dev libx11-xcb-dev
+        run: |
+          sudo apt-get install libx11-dev
+          export QT_QPA_PLATFORM=offscreen
       - name: Install dependencies
         run: |
           pip install "napari[all]"
