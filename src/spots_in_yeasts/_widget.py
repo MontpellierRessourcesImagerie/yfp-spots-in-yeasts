@@ -36,15 +36,17 @@ def default_export():
     return FormatsList.format_1844
 
 _global_settings = {
-    'gaussian_radius'   : 3.0,                    # Radius of the Gaussian filter applied to the spots layer before detection.
-    'neighbour_slices'  : 2,                      # Number of slices taken around the focus slice (in the case of a stack).
-    'peak_distance'     : 5,                      # Minimum distance required between two spots (to account for noise).
-    'area_threshold'    : 90,                     # Maximum area of a spot; anything beyond that will be considered as waste.
-    'extent_threshold'  : 0.6,                    # Minimal extent tolerated before discarding a spot.
-    'solidity_threshold': 0.87,                   # Minimum solidity tolerated before discarding a spot.
-    'death_threshold'   : int(65535/2),           # Intensity threshold above which a cell is considered dead.
-    'cover_threshold'   : 0.75,                   # The percentage of a cell that must be covered by a nucleus for it to be considered dead.
-    'export_mode'       : FormatsList.format_1844 # Format used to create the exported CSV file.
+    'gaussian_radius'    : 3.0,                    # Radius of the Gaussian filter applied to the spots layer before detection.
+    'neighbour_slices'   : 2,                      # Number of slices taken around the focus slice (in the case of a stack).
+    'peak_distance'      : 5,                      # Minimum distance required between two spots (to account for noise).
+    'area_threshold_up'  : 90,                     # Maximum area of a spot; anything beyond that will be considered as waste.
+    'extent_threshold'   : 0.6,                    # Minimal extent tolerated before discarding a spot.
+    'solidity_threshold' : 0.6,                    # Minimum solidity tolerated before discarding a spot.
+    'death_threshold'    : int(65535/2),           # Intensity threshold above which a cell is considered dead.
+    'cover_threshold'    : 0.75,                   # The percentage of a cell that must be covered by a nucleus for it to be considered dead.
+    'threshold_rel'      : 0.5,                    # Intensity shift required (relative to the max intensity in the image) to consider that a fluctuation is actually a spot.
+    'area_threshold_down': 15,
+    'export_mode'        : FormatsList.format_1844 # Format used to create the exported CSV file.
 }
 
 @magicclass
@@ -249,32 +251,41 @@ class SpotsInYeastsDock:
 
     
     @magicgui(
-        call_button  = "Apply settings",
-        death_threshold = {'max': 65535}
+        call_button     = "Apply settings",
+        death_threshold = {'max': 65535},
+        cover_threshold = {'min': 0.0, 'max': 1.0},
+        threshold_rel   = {'min': 0.0, 'max': 1.0},
+        area_threshold_down   = {'min': 0, 'max': 999},
     )
     def apply_settings_gui(
         self, 
+        neighbour_slices: int=_global_settings['neighbour_slices'],
+        
+        cover_threshold: float=_global_settings['cover_threshold'],
+
         gaussian_radius: float=_global_settings['gaussian_radius'], 
-        neighbour_slices: int=_global_settings['neighbour_slices'], 
         death_threshold: int=_global_settings['death_threshold'], 
         peak_distance: int=_global_settings['peak_distance'], 
-        area_threshold: int=_global_settings['area_threshold'], 
+        area_threshold_down: int=_global_settings['area_threshold_down'],
+        area_threshold_up: int=_global_settings['area_threshold_up'], 
         extent_threshold: float=_global_settings['extent_threshold'], 
         solidity_threshold: float=_global_settings['solidity_threshold'], 
-        cover_threshold: float=_global_settings['cover_threshold'],
+        threshold_rel: float=_global_settings['threshold_rel'],
         export_mode: FormatsList=default_export()):
         
         global _global_settings
 
-        _global_settings['gaussian_radius']    = gaussian_radius
-        _global_settings['neighbour_slices']   = neighbour_slices
-        _global_settings['peak_distance']      = peak_distance
-        _global_settings['area_threshold']     = area_threshold
-        _global_settings['extent_threshold']   = extent_threshold
-        _global_settings['solidity_threshold'] = solidity_threshold
-        _global_settings['export_mode']        = export_mode
-        _global_settings['death_threshold']    = death_threshold
-        _global_settings['cover_threshold']    = cover_threshold
+        _global_settings['gaussian_radius']     = gaussian_radius
+        _global_settings['neighbour_slices']    = neighbour_slices
+        _global_settings['peak_distance']       = peak_distance
+        _global_settings['area_threshold_up']   = area_threshold_up
+        _global_settings['extent_threshold']    = extent_threshold
+        _global_settings['solidity_threshold']  = solidity_threshold
+        _global_settings['export_mode']         = export_mode
+        _global_settings['death_threshold']     = death_threshold
+        _global_settings['cover_threshold']     = cover_threshold
+        _global_settings['threshold_rel']       = threshold_rel
+        _global_settings['area_threshold_down'] = area_threshold_down
 
     @magicgui(call_button="Clear layers")
     def clear_layers_gui(self):
@@ -408,7 +419,8 @@ class SpotsInYeastsDock:
         flattened_nuclei, labeled_yeasts, labeled_nuclei = segment_nuclei(
             self.cells[_seg_ori], 
             self._get_image(_nuclei), 
-            _global_settings['cover_threshold'])
+            _global_settings['cover_threshold']
+        )
 
         # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
         
@@ -465,7 +477,8 @@ class SpotsInYeastsDock:
             labeled_cells, 
             _global_settings['death_threshold'], 
             _global_settings['gaussian_radius'], 
-            _global_settings['peak_distance']
+            _global_settings['peak_distance'],
+            _global_settings['threshold_rel']
             )
         
         self._set_image(_f_spots, f_spots)
@@ -476,7 +489,7 @@ class SpotsInYeastsDock:
             categories = None
 
         # `ow` gives for each cell a list of spots properties.
-        ow, spots_locations, labeled_spots = associate_spots_yeasts(labeled_cells, labeled_spots, f_spots, _global_settings['area_threshold'], _global_settings['solidity_threshold'], _global_settings['extent_threshold'], categories)
+        ow, spots_locations, labeled_spots = associate_spots_yeasts(labeled_cells, labeled_spots, f_spots, _global_settings['area_threshold_down'], _global_settings['area_threshold_up'], _global_settings['solidity_threshold'], _global_settings['extent_threshold'], categories)
         self._set_ownership(ow)
 
         if self._required_key(_lbl_n): # If we have nuclei, we can classify spots.

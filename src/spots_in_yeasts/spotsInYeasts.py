@@ -168,7 +168,7 @@ def segment_transmission(stack, gpu=True, slices_around=2):
 
 #################################################################################
 
-def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_threshold, solidity_threshold, extent_threshold, classification=None):
+def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_threshold_down, area_threshold_up, solidity_threshold, extent_threshold, classification=None):
     """
     Associates each spot with the label it belongs to.
     A safety check is performed to make sure no spot falls in the background.
@@ -194,7 +194,7 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_thresh
         if lbl == 0:
             continue # We are in the background
 
-        if float(spot['area']) > area_threshold:
+        if (int(spot['area']) > area_threshold_up) or (int(spot['area']) < area_threshold_down):
             continue
         
         if float(spot['solidity']) < solidity_threshold:
@@ -224,7 +224,7 @@ def associate_spots_yeasts(labeled_cells, labeled_spots, fluo_spots, area_thresh
     return ownership, np.array([item['location'] for sub_list in ownership.values() for item in sub_list]), labeled_spots
 
 
-def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5):
+def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5, threshold_rel=0.7):
     """
     Args:
         stack: A numpy array representing the fluo channel
@@ -260,7 +260,7 @@ def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5):
     # >>> Detection of spots location
     asf     = mask.astype(np.float64)
     chamfer = distance_transform_cdt(asf)
-    maximas = peak_local_max(chamfer, min_distance=peak_d)
+    maximas = peak_local_max(chamfer, min_distance=peak_d, threshold_rel=threshold_rel)
 
     spots_props = {props.label: props['intensity_mean'] for props in regionprops(labeled_cells, intensity_image=save_fSpots)}
     maximas = np.array([(l, c) for (l, c) in maximas if (labeled_cells[l, c] > 0) and (spots_props[labeled_cells[l, c]] < death_threshold)])
@@ -668,7 +668,7 @@ def remove_excessive_coverage(labeled_cells, labeled_nuclei, covering_threshold)
     return discarded_cells, discarded_nuclei
 
 
-def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold=0.7, graph=None):
+def assign_nucleus(labeled_cells, labeled_nuclei, covering_threshold, graph=None):
     """
     First step of the nuclei segmentation. It starts by finding all the cells having "their own nucleus" (== a cell overlaped by a nucleus)
 
@@ -806,7 +806,7 @@ def segment_nuclei(labeled_yeasts, stack_fluo_nuclei, threshold_coverage):
     Args:
         labeled_yeasts: Image containing the labeled yeast cells.
         stack_fluo_nuclei: Image containing the stained nuclei.
-        threshold_coverage: Percentage (in 0.0; 1.0) of a cell that must be covered by a nucleus to be considered dead.
+        threshold_coverage: Percentage (in [0.0, 1.0]) of a cell that must be covered by a nucleus to be considered dead.
     
     Returns:
         - The maximal projection of the stained nuclei channel.
