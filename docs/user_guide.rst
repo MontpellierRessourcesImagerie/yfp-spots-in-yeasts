@@ -46,23 +46,27 @@ If your images don't respect the previous conditions, you can check the page exp
 +-------------------------+-------------------------------------------------------------------------------------------+
 | Name                    | Description                                                                               |
 +=========================+===========================================================================================+
-| Gaussian Radius         | Radius of the Gaussian filter applied to the spots layer before detection.                |
+| LoG Radius              | Radius (in pixels) of the Gaussian filter applied to the spots channel before detection.  |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Neighbour slices        | Number of slices taken around the focus slice (in the case of a stack).                   |
+| Slices around focus     | Number of slices taken around the focus slice (in the case of a stack).                   |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Death threshold         | Intensity threshold above which a cell is considered dead.                                |
+| Death threshold         | Intensity threshold in the spots channel beyond which a cell is considered dead.          |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Peak distance           | Minimum distance required between two spots (to account for noise).                       |
+| Min spots distance      | Minimum distance (in pixels) required between two spots (to account for noise).           |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Area threshold          | Maximum area of a spot; anything beyond that will be considered as waste.                 |
+| Spot area min           | Minimum area of a spot; anything lower than that will be considered as waste.             |
++-------------------------+-------------------------------------------------------------------------------------------+
+| Spot area max           | Maximum area of a spot; anything beyond that will be considered as waste.                 |
 +-------------------------+-------------------------------------------------------------------------------------------+
 | Extent threshold        | Minimal extent tolerated before discarding a spot.                                        |
 +-------------------------+-------------------------------------------------------------------------------------------+
 | Solidity threshold      | Minimum solidity tolerated before discarding a spot.                                      |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Cover threshold         | Percentage of a cell that must be covered by a nucleus for it to be considered dead.      |
+| N/C cover threshold     | Percentage of a cell that must be covered by a nucleus for it to be considered dead.      |
 +-------------------------+-------------------------------------------------------------------------------------------+
-| Export mode             | Format used to create the exported CSV file.                                              |
+| Intensity threshold     | Percentage of the max intensity in the spots channel required to validate a spot.         |
++-------------------------+-------------------------------------------------------------------------------------------+
+| Export format           | Format used to create the exported CSV file.                                              |
 +-------------------------+-------------------------------------------------------------------------------------------+
 
 

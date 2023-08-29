@@ -14,6 +14,7 @@ from napari.utils import progress
 from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, distance_spot_nuclei, associate_spots_yeasts, create_reference_to, prepare_directory, write_labels_image, segment_nuclei
 from spots_in_yeasts.formatData import format_data_1844, format_data_1895
 from enum import Enum, auto
+from typing import Annotated, Literal
 
 _bf      = "brightfield"
 _f_spots = "fluo-spots"
@@ -249,29 +250,35 @@ class SpotsInYeastsDock:
 
         print(f"{len(self.queue)} files found.")
 
-    
+
     @magicgui(
-        call_button     = "Apply settings",
-        death_threshold = {'max': 65535},
-        cover_threshold = {'min': 0.0, 'max': 1.0},
-        threshold_rel   = {'min': 0.0, 'max': 1.0},
-        area_threshold_down   = {'min': 0, 'max': 999},
-    )
+        call_button         = "Apply settings",
+        death_threshold     = {'max': 65535, 'label': "Death threshold"},
+        cover_threshold     = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "N/C cover threshold (%)"},
+        threshold_rel       = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Intensity threshold (%)"},
+        solidity_threshold  = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Solidity threshold"},
+        extent_threshold    = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Extent threshold"},
+        gaussian_radius     = {'label': "LoG radius (pxl)", 'min': 1, 'max': 10},
+        area_threshold_down = {'label': "Spot area min (pxl)"},
+        area_threshold_up   = {'label': "Spot area max (pxl)"},
+        export_mode         = {'label': "Export format"},
+        neighbour_slices    = {'label': "Slices around focus", 'min': 0},
+        peak_distance       = {'label': "Min spots distance (pxl)", 'min': 0})
     def apply_settings_gui(
         self, 
         neighbour_slices: int=_global_settings['neighbour_slices'],
-        
-        cover_threshold: float=_global_settings['cover_threshold'],
 
-        gaussian_radius: float=_global_settings['gaussian_radius'], 
-        death_threshold: int=_global_settings['death_threshold'], 
-        peak_distance: int=_global_settings['peak_distance'], 
+        cover_threshold : float=_global_settings['cover_threshold'],
+
+        gaussian_radius    : int=_global_settings['gaussian_radius'], 
+        death_threshold    : int=_global_settings['death_threshold'], 
+        peak_distance      : int=_global_settings['peak_distance'], 
         area_threshold_down: int=_global_settings['area_threshold_down'],
-        area_threshold_up: int=_global_settings['area_threshold_up'], 
-        extent_threshold: float=_global_settings['extent_threshold'], 
-        solidity_threshold: float=_global_settings['solidity_threshold'], 
-        threshold_rel: float=_global_settings['threshold_rel'],
-        export_mode: FormatsList=default_export()):
+        area_threshold_up  : int=_global_settings['area_threshold_up'], 
+        extent_threshold   : float=_global_settings['extent_threshold'], 
+        solidity_threshold : float=_global_settings['solidity_threshold'], 
+        threshold_rel      : float=_global_settings['threshold_rel'],
+        export_mode        : FormatsList=default_export()):
         
         global _global_settings
 
