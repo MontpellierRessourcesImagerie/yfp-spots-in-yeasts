@@ -473,20 +473,20 @@ class SpotsInYeastsDock:
         labeled_cells = self.cells[_seg_ori] if (self.cells[_seg_nuc] is None) else self.cells[_seg_nuc]
         labeled_cells = clear_border(labeled_cells)
 
+        spots_locations, labeled_spots, f_spots = segment_spots(
+            self._get_image(_f_spots), 
+            labeled_cells,
+            _global_settings['death_threshold'],
+            _global_settings['gaussian_radius'], 
+            _global_settings['peak_distance'],
+            _global_settings['threshold_rel']
+            )
+        
         self._set_image(_lbl_c, labeled_cells, {
             'blending': "additive"
         },
         True,
         4)
-        
-        spots_locations, labeled_spots, f_spots = segment_spots(
-            self._get_image(_f_spots), 
-            labeled_cells, 
-            _global_settings['death_threshold'], 
-            _global_settings['gaussian_radius'], 
-            _global_settings['peak_distance'],
-            _global_settings['threshold_rel']
-            )
         
         self._set_image(_f_spots, f_spots)
 

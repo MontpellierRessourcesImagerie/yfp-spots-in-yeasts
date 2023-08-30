@@ -36,7 +36,7 @@ class CSVtable(object):
     
     def exportTo(self, fullPath):
         with open(fullPath, 'w') as csvfile:
-            writer = csv.writer(csvfile, delimiter=',')
+            writer = csv.writer(csvfile, delimiter=';')
             writer.writerow(self.titles)
             for row in self.lines:
                 writer.writerow(row)

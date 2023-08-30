@@ -262,9 +262,17 @@ def segment_spots(stack, labeled_cells, death_threshold, sigma=3.0, peak_d=5, th
     chamfer = distance_transform_cdt(asf)
     maximas = peak_local_max(chamfer, min_distance=peak_d, threshold_rel=threshold_rel)
 
-    spots_props = {props.label: props['intensity_mean'] for props in regionprops(labeled_cells, intensity_image=save_fSpots)}
-    maximas = np.array([(l, c) for (l, c) in maximas if (labeled_cells[l, c] > 0) and (spots_props[labeled_cells[l, c]] < death_threshold)])
+    # Removing dead cells
+    dead_cells = set()
+    for props in regionprops(labeled_cells, intensity_image=save_fSpots):
+        if props['intensity_mean'] >= death_threshold:
+            dead_cells.add(props['label'])
+    
+    print(f"{len(dead_cells)} are now considered dead due to an excessive intensity.")
+    remove_labels(labeled_cells, dead_cells)
     print(f"{len(maximas)} spots found.")
+
+    maximas = [m for m in maximas if labeled_cells[m[0], m[1]] > 0]
 
     # >>> Isolating instances of spots
     m_shape   = mask.shape[0:2]
@@ -373,7 +381,7 @@ class YeastsPartitionGraph(object):
         print(colored("Maximum bipartite matching of the adjacency graph finished.", 'green'))
 
     def remove_borders(self, labeled_yeasts, labeled_nuclei):
-        mask = binary_erosion(np.zeros(labeled_yeasts.shape) == 0)
+        mask = binary_erosion(np.zeros(labeled_yeasts.shape) == 0, iterations=3)
         working_copy = np.copy(labeled_yeasts)
         working_copy[mask] = 0
 
