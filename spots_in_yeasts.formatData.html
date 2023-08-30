@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spots_in_yeasts.formatData module &mdash; Spots in yeasts 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/tabs.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="spots_in_yeasts.siy-convert-format module" href="spots_in_yeasts.siy-convert-format.html" />
+    <link rel="prev" title="spots_in_yeasts package" href="spots_in_yeasts.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Spots in yeasts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">Quick start: A user guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="convert_data.html">Conform your data</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">src</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="spots_in_yeasts.html">spots_in_yeasts package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="spots_in_yeasts.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">spots_in_yeasts.formatData module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.siy-convert-format.html">spots_in_yeasts.siy-convert-format module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.spotsInYeasts.html">spots_in_yeasts.spotsInYeasts module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.test-nuclei.html">spots_in_yeasts.test-nuclei module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spots_in_yeasts.html#module-spots_in_yeasts">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Spots in yeasts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">src</a></li>
+          <li class="breadcrumb-item"><a href="spots_in_yeasts.html">spots_in_yeasts package</a></li>
+      <li class="breadcrumb-item active">spots_in_yeasts.formatData module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/spots_in_yeasts.formatData.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-spots_in_yeasts.formatData">
+<span id="spots-in-yeasts-formatdata-module"></span><h1>spots_in_yeasts.formatData module<a class="headerlink" href="#module-spots_in_yeasts.formatData" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.formatData.</span></span><span class="sig-name descname"><span class="pre">CSVtable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ttls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'-'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable.cancelRow">
+<span class="sig-name descname"><span class="pre">cancelRow</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable.cancelRow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable.cancelRow" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable.exportTo">
+<span class="sig-name descname"><span class="pre">exportTo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fullPath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable.exportTo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable.exportTo" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable.getTitles">
+<span class="sig-name descname"><span class="pre">getTitles</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable.getTitles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable.getTitles" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable.newRow">
+<span class="sig-name descname"><span class="pre">newRow</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable.newRow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable.newRow" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.CSVtable.setValue">
+<span class="sig-name descname"><span class="pre">setValue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#CSVtable.setValue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.CSVtable.setValue" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.format_data_1844">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.formatData.</span></span><span class="sig-name descname"><span class="pre">format_data_1844</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#format_data_1844"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.format_data_1844" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.format_data_1895">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.formatData.</span></span><span class="sig-name descname"><span class="pre">format_data_1895</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#format_data_1895"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.format_data_1895" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.get_header_1844">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.formatData.</span></span><span class="sig-name descname"><span class="pre">get_header_1844</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#get_header_1844"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.get_header_1844" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.formatData.get_header_1895">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.formatData.</span></span><span class="sig-name descname"><span class="pre">get_header_1895</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/formatData.html#get_header_1895"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.formatData.get_header_1895" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spots_in_yeasts.html" class="btn btn-neutral float-left" title="spots_in_yeasts package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spots_in_yeasts.siy-convert-format.html" class="btn btn-neutral float-right" title="spots_in_yeasts.siy-convert-format module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Clément H. Benedetti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

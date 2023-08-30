@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spots_in_yeasts.spotsInYeasts module &mdash; Spots in yeasts 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/tabs.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="spots_in_yeasts.test-nuclei module" href="spots_in_yeasts.test-nuclei.html" />
+    <link rel="prev" title="spots_in_yeasts.siy-convert-format module" href="spots_in_yeasts.siy-convert-format.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Spots in yeasts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">Quick start: A user guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="convert_data.html">Conform your data</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">src</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="spots_in_yeasts.html">spots_in_yeasts package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="spots_in_yeasts.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.formatData.html">spots_in_yeasts.formatData module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.siy-convert-format.html">spots_in_yeasts.siy-convert-format module</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">spots_in_yeasts.spotsInYeasts module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spots_in_yeasts.test-nuclei.html">spots_in_yeasts.test-nuclei module</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spots_in_yeasts.html#module-spots_in_yeasts">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Spots in yeasts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">src</a></li>
+          <li class="breadcrumb-item"><a href="spots_in_yeasts.html">spots_in_yeasts package</a></li>
+      <li class="breadcrumb-item active">spots_in_yeasts.spotsInYeasts module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/spots_in_yeasts.spotsInYeasts.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-spots_in_yeasts.spotsInYeasts">
+<span id="spots-in-yeasts-spotsinyeasts-module"></span><h1>spots_in_yeasts.spotsInYeasts module<a class="headerlink" href="#module-spots_in_yeasts.spotsInYeasts" title="Permalink to this headline"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">YeastsPartitionGraph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">o_graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_to_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nucleus_to_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_yeasts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class implementing the Hopcroft-Karp algorithm to create a maximal dual-matching.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.bfs">
+<span class="sig-name descname"><span class="pre">bfs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.bfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.bfs" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.dfs">
+<span class="sig-name descname"><span class="pre">dfs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.dfs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.dfs" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.find_partition">
+<span class="sig-name descname"><span class="pre">find_partition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vertex</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_to_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nucleus_to_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">o_graph</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.find_partition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.find_partition" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.launch_hopcroft_karp">
+<span class="sig-name descname"><span class="pre">launch_hopcroft_karp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.launch_hopcroft_karp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.launch_hopcroft_karp" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_cells_lut">
+<span class="sig-name descname"><span class="pre">make_cells_lut</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.make_cells_lut"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_cells_lut" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_new_labels">
+<span class="sig-name descname"><span class="pre">make_new_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">old_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">old_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_to_nuclei</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.make_new_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_new_labels" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_nuclei_lut">
+<span class="sig-name descname"><span class="pre">make_nuclei_lut</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell_to_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cells_lut</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.make_nuclei_lut"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_nuclei_lut" title="Permalink to this definition"></a></dt>
+<dd><p>Makes a dictionary to transform the indices of nuclei.
+It is used to make the nuclei indices match their owner cell’s index.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cell_to_nuclei</strong> – Structure giving for a cell the index of its nucleus.</p></li>
+<li><p><strong>cells_lut</strong> – LUT used to make mother and daughter cells match each other’s label.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A LUT to transform the nuclei indices.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.remove_borders">
+<span class="sig-name descname"><span class="pre">remove_borders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_yeasts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#YeastsPartitionGraph.remove_borders"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.remove_borders" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.adjacency_graph">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">adjacency_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_undirected</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#adjacency_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.adjacency_graph" title="Permalink to this definition"></a></dt>
+<dd><p>Creates the adjacency graph of the segmented cells.
+Two cells are called “adjacent” if their labels are touching one another in 8-connectivity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_cells</strong> – The labeled image representing segmented cells.</p></li>
+<li><p><strong>check_undirected</strong> – Activate the cheking of the graph essential properties (only for debug purposes).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary representing the cells as a graph, indexed by cells’ labels.
+For each label, gives: its location and its neighbors</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.assign_nucleus">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">assign_nucleus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covering_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#assign_nucleus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.assign_nucleus" title="Permalink to this definition"></a></dt>
+<dd><p>First step of the nuclei segmentation. It starts by finding all the cells having “their own nucleus” (== a cell overlaped by a nucleus)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_cells</strong> – The image containing the labeled cells.</p></li>
+<li><p><strong>labeled_nuclei</strong> – The image containing the labeled nuclei.</p></li>
+<li><p><strong>covering_threshold</strong> – Percentage of a cell that must be covered by nuclei for this cell to be considered dead.</p></li>
+<li><p><strong>graph</strong> – Adjacency graph of the labeled cells.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>The labeled cells from which we removed invalid individuals.</p></li>
+<li><p>The labeled nuclei</p></li>
+<li><p>The adjacency graph from which we removed dead individuals.</p></li>
+<li><p>A structure mapping cells indices to nuclei indices.</p></li>
+<li><p>A structure mapping nuclei indices to cells indices.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.associate_spots_yeasts">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">associate_spots_yeasts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_spots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fluo_spots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold_down</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_threshold_up</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solidity_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">classification</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#associate_spots_yeasts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.associate_spots_yeasts" title="Permalink to this definition"></a></dt>
+<dd><p>Associates each spot with the label it belongs to.
+A safety check is performed to make sure no spot falls in the background.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_cells</strong> – A single-channeled image with dtype=uint16 containing the segmented transmission image.</p></li>
+<li><p><strong>labeled_spots</strong> – A labelised image representing spots</p></li>
+<li><p><strong>fluo_spots</strong> – The original fluo image containing spots.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary in which keys are the labels of each cell. Each key points to a list of dictionary. Each element of the list corresponds to a spot.
+An image representing labels in the fluo channel (a label per spot) is also returned.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.create_random_lut">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">create_random_lut</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#create_random_lut"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.create_random_lut" title="Permalink to this definition"></a></dt>
+<dd><p>Creates a random LUT of 256 slots to display labeled images with colors far apart from each other.
+Black is reserved for the background.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A cmap object that can be used with the imshow() function. ex: <cite>imshow(image, cmap=create_random_lut())</cite></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>LinearSegmentedColormap</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.create_reference_to">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">create_reference_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_spots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spots_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">control_dir_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection_spots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nuclei_fluo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spots_colors</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#create_reference_to"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.create_reference_to" title="Permalink to this definition"></a></dt>
+<dd><p>Creates a folder containing everything a user needs to see in order to check whether the process ended correctly and produced a correct segmentation.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.distance_spot_nuclei">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">distance_spot_nuclei</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_spots</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#distance_spot_nuclei"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.distance_spot_nuclei" title="Permalink to this definition"></a></dt>
+<dd><p>Assign a class to every spot depending on its location according to the nucleus of the cell it is in.
+It can be ‘nuclear’, ‘cytoplasmic’ or ‘peripheral’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_cells</strong> – The image containing labeled cells.</p></li>
+<li><p><strong>labeled_nuclei</strong> – The image containing labeled nuclei.</p></li>
+<li><p><strong>labeled_spots</strong> – The image containing labeled spots.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A dictionary giving for each spot label (int), its category (str).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.fill_holes">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">fill_holes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#fill_holes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.fill_holes" title="Permalink to this definition"></a></dt>
+<dd><p>A hole is a background area surrounded by a unique label and from which we can’t reach the image’s border.
+No in-place editing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>image</strong> – A labeled image on black background</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The same image as input but without holes in labels.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.find_focused_slice">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">find_focused_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">around</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#find_focused_slice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.find_focused_slice" title="Permalink to this definition"></a></dt>
+<dd><p>Determines which slice has the best focus and selects a range of slices around it.
+The process is based on the variance recorded for each slice.
+Displays a warning if the number of slices is insufficient.
+A safety check is performed to ensure that the returned indices are within the range of the stack’s size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>stack</strong> – (image stack) The stack in which we search the focused area.</p></li>
+<li><p><strong>around</strong> – (int) Number of slices to select around the most in-focus one.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple centered around the most in-focus slice. If we call ‘F’ the index of that slice, then the tuple is: <cite>(F-around, F+around)</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(int, int)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.get_neighbors">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">get_neighbors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#get_neighbors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.get_neighbors" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.is_undirected">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">is_undirected</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#is_undirected"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.is_undirected" title="Permalink to this definition"></a></dt>
+<dd><p>Checks whether a graph is undirected or not.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.nuclei_from_fluo">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">nuclei_from_fluo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stack_fluo_nuclei</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#nuclei_from_fluo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.nuclei_from_fluo" title="Permalink to this definition"></a></dt>
+<dd><p>Produces a segmentation of nuclei based on the nuclei marking (either a single slice or a stack).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>marking.</strong> (<em>An image</em><em> or </em><em>a stack representing the nuclei</em>) – </p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Results:</dt><dd><p>The MIP of the provided image and a labeled version of nuclei.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.place_markers">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">place_markers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m_list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#place_markers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.place_markers" title="Permalink to this definition"></a></dt>
+<dd><p>Places pixels with an incremental intensity (from 1) at each position contained in the list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>A mask with black background and one pixel at each intensity from 1 to len(m_list).</p>
+</dd>
+<dt class="field-even">Parameters</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>shp</strong> – A 2D tuple representing the shape of the mask to be created.</p></li>
+<li><p><strong>m_list</strong> – A list of tuples representing 2D coordinates.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.prepare_directory">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">prepare_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#prepare_directory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.prepare_directory" title="Permalink to this definition"></a></dt>
+<dd><p>Prepares a directory to receive the control images for the batch mode.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.remove_excessive_coverage">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">remove_excessive_coverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covering_threshold</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#remove_excessive_coverage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.remove_excessive_coverage" title="Permalink to this definition"></a></dt>
+<dd><p>Removing cells in which the nucleus occupies too much surface (dead cell).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_cells</strong> – The image containing the labeled cells.</p></li>
+<li><p><strong>labeled_nuclei</strong> – The image containing the labeled nuclei.</p></li>
+<li><p><strong>covering_threshold</strong> – Percentage of a cell that must be covered by nuclei for this cell to be considered dead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Two sets containing the indices of discarded nuclei and the indices of discarded cells.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.remove_labels">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">remove_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#remove_labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.remove_labels" title="Permalink to this definition"></a></dt>
+<dd><p>Macro-function removing some labels from an image. The modification is made in-place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – A labeled image.</p></li>
+<li><p><strong>labels</strong> – A set of indices that we want to remove from <cite>image</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.segment_nuclei">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">segment_nuclei</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labeled_yeasts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stack_fluo_nuclei</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_coverage</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#segment_nuclei"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.segment_nuclei" title="Permalink to this definition"></a></dt>
+<dd><p>Launches the procedure to segment nuclei from the dedicated fluo channel, and merge mother cells with their daughter if the division process is still ongoing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>labeled_yeasts</strong> – Image containing the labeled yeast cells.</p></li>
+<li><p><strong>stack_fluo_nuclei</strong> – Image containing the stained nuclei.</p></li>
+<li><p><strong>threshold_coverage</strong> – Percentage (in [0.0, 1.0]) of a cell that must be covered by a nucleus to be considered dead.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>The maximal projection of the stained nuclei channel.</p></li>
+<li><p>The labeled yeasts from which we removed the dead cells.</p></li>
+<li><p>The image containing the labeled nuclei.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.segment_spots">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">segment_spots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labeled_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">death_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_d</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_rel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#segment_spots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.segment_spots" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>stack</strong> – A numpy array representing the fluo channel</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary containing several pieces of information about spots.</dt><dd><ul class="simple">
+<li><p>original: The input image after maximal projection</p></li>
+<li><p>contrasted: A version of the channel stretched on the whole histogram.</p></li>
+<li><p>mask: A labeled image containing an index per detected spot.</p></li>
+<li><p>locations: A list of 2D coordinates representing each spot.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.segment_transmission">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">segment_transmission</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slices_around</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#segment_transmission"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.segment_transmission" title="Permalink to this definition"></a></dt>
+<dd><p>Takes the path of an image that contains some yeasts in transmission.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>stack</strong> – A numpy array representing the transmission channel</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A uint16 image containing labels. Each label corresponds to an instance of yeast cell.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.segment_yeasts_cells">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">segment_yeasts_cells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transmission</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gpu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#segment_yeasts_cells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.segment_yeasts_cells" title="Permalink to this definition"></a></dt>
+<dd><p>Takes the transmission channel (brightfield) of yeast cells and segments it (instances segmentation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>transmission</strong> (<em>image</em>) – Single channeled image, in brightfield, representing yeasts</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>(image) An image containing labels (one value == one individual).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="spots_in_yeasts.spotsInYeasts.write_labels_image">
+<span class="sig-prename descclassname"><span class="pre">spots_in_yeasts.spotsInYeasts.</span></span><span class="sig-name descname"><span class="pre">write_labels_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">font_scale</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/spots_in_yeasts/spotsInYeasts.html#write_labels_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spots_in_yeasts.spotsInYeasts.write_labels_image" title="Permalink to this definition"></a></dt>
+<dd><p>Creates an image on which the indices of labels are literally written in the center of each label.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – A labeled image.</p></li>
+<li><p><strong>fonst_scale</strong> – Size of the font to write digits.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A binary mask representing the literal index of each label.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spots_in_yeasts.siy-convert-format.html" class="btn btn-neutral float-left" title="spots_in_yeasts.siy-convert-format module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spots_in_yeasts.test-nuclei.html" class="btn btn-neutral float-right" title="spots_in_yeasts.test-nuclei module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Clément H. Benedetti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

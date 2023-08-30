@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick start: A user guide &mdash; Spots in yeasts 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/tabs.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/tabs.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Conform your data" href="convert_data.html" />
+    <link rel="prev" title="Welcome to Spots in yeasts’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Spots in yeasts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick start: A user guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#install-the-plugin">1. Install the plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-demonstration">2. Quick demonstration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#before-starting">3. Before starting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#settings">4. Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#processing">5. Processing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a-process-a-single-image">a. Process a single image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#b-batch-processing">b. Batch processing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#c-results-control">c. Results control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-how-to-read-the-results">d. How to read the results?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#notes">6. Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#solidity-extent">7. Solidity &amp; Extent</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="convert_data.html">Conform your data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Spots in yeasts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Quick start: A user guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/user_guide.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quick-start-a-user-guide">
+<h1>Quick start: A user guide<a class="headerlink" href="#quick-start-a-user-guide" title="Permalink to this headline"></a></h1>
+<section id="install-the-plugin">
+<h2>1. Install the plugin<a class="headerlink" href="#install-the-plugin" title="Permalink to this headline"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 88%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Instructions</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>With pip</p></td>
+<td><p>Launch your conda environment, and type <code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">spots-in-yeasts</span></code>. The plugin should then appear in your plugins list.</p></td>
+</tr>
+<tr class="row-odd"><td><p>From Napari Hub</p></td>
+<td><p>Go in the plugins menu of Napari and search for “Spots in yeasts”</p></td>
+</tr>
+<tr class="row-even"><td><p>From GitHub</p></td>
+<td><p>Launching your conda environment and then use the command <code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">git+https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts.git</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="quick-demonstration">
+<h2>2. Quick demonstration<a class="headerlink" href="#quick-demonstration" title="Permalink to this headline"></a></h2>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/VkqufgHlTcU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></section>
+<section id="before-starting">
+<h2>3. Before starting<a class="headerlink" href="#before-starting" title="Permalink to this headline"></a></h2>
+<p><code class="code docutils literal notranslate"><span class="pre">Spots</span> <span class="pre">in</span> <span class="pre">yeasts</span></code> expects a very precise file as its input:</p>
+<ul class="simple">
+<li><p>The file must be a TIFF (no .czi, .nd, …)</p></li>
+<li><p>Both channels must be packed in this TIFF.</p></li>
+<li><p>The first channel must contain the spots and the second the brightfield.</p></li>
+<li><dl class="simple">
+<dt>The number of slices is arbitrary.</dt><dd><ul>
+<li><p>If you have a single slice, it is the one that is going to be used.</p></li>
+<li><p>If you have a stack, a MIP will be used for the processing. It will be based on the most in-focus slice as well as N slices before and after it.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>If your images don’t respect the previous conditions, you can check the page explaining <a class="reference internal" href="convert_data.html"><span class="doc">how to conform your data</span></a>.</p>
+</section>
+<section id="settings">
+<h2>4. Settings<a class="headerlink" href="#settings" title="Permalink to this headline"></a></h2>
+<p><strong>If you modify some settings, don’t forget to click the ‘Apply settings’ button for them to take effect!!!</strong></p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 78%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>LoG Radius</p></td>
+<td><p>Radius (in pixels) of the Gaussian filter applied to the spots channel before detection.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Slices around focus</p></td>
+<td><p>Number of slices taken around the focus slice (in the case of a stack).</p></td>
+</tr>
+<tr class="row-even"><td><p>Death threshold</p></td>
+<td><p>Intensity threshold in the spots channel beyond which a cell is considered dead.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Min spots distance</p></td>
+<td><p>Minimum distance (in pixels) required between two spots (to account for noise).</p></td>
+</tr>
+<tr class="row-even"><td><p>Spot area min</p></td>
+<td><p>Minimum area of a spot; anything lower than that will be considered as waste.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Spot area max</p></td>
+<td><p>Maximum area of a spot; anything beyond that will be considered as waste.</p></td>
+</tr>
+<tr class="row-even"><td><p>Extent threshold</p></td>
+<td><p>Minimal extent tolerated before discarding a spot.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Solidity threshold</p></td>
+<td><p>Minimum solidity tolerated before discarding a spot.</p></td>
+</tr>
+<tr class="row-even"><td><p>N/C cover threshold</p></td>
+<td><p>Percentage of a cell that must be covered by a nucleus for it to be considered dead.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Intensity threshold</p></td>
+<td><p>Percentage of the max intensity in the spots channel required to validate a spot.</p></td>
+</tr>
+<tr class="row-even"><td><p>Export format</p></td>
+<td><p>Format used to create the exported CSV file.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="processing">
+<h2>5. Processing<a class="headerlink" href="#processing" title="Permalink to this headline"></a></h2>
+<section id="a-process-a-single-image">
+<h3>a. Process a single image<a class="headerlink" href="#a-process-a-single-image" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p>If something is already present in the Napari viewer, click on <code class="code docutils literal notranslate"><span class="pre">Clear</span> <span class="pre">layers</span></code>. It will flush everything present in your current viewer.</p></li>
+<li><p>Drag’N’drop your TIFF file into the Napari viewer. It should appear in the left column.</p></li>
+<li><p>Click on <code class="code docutils literal notranslate"><span class="pre">Split</span> <span class="pre">channels</span></code>. Now, your original image should have disappeared (in the left column) and two (or three) new layers took its place.They represent the brightfield, spots’ fluo channel and the optional nuclei’s channel. Layers are opaque, which means that as long as you don’t toggle the little eye icon in the left column, the viewer shows you the uppermost layer.</p></li>
+<li><p>You can now click the <code class="code docutils literal notranslate"><span class="pre">Segment</span> <span class="pre">cells</span></code> button. This operation can take quite a while depending on your hardware. The presence of a dedicated GPU on your machine would help a lot. The result will spawn as a new layer containing a label for each cell in the brightfield. At this point, cells cut by the borders have already been discarded. If you make this new layer active (just click on it in the left column until its name turns blue), you can pass your mouse over each label to verify its value. These values match the indices present in the results file.</p></li>
+<li><p>If your nuclei are marked, you can click the <code class="code docutils literal notranslate"><span class="pre">Segment</span> <span class="pre">nuclei</span></code> button. It will both segment the nuclei and attempt to merge the mothers with their daughter.</p></li>
+<li><p>Click the <code class="code docutils literal notranslate"><span class="pre">Segment</span> <span class="pre">spots</span></code> button. This step is much quicker. You can zoom on your image to see where spots were detected. Note that the white circles only represent the position of detected spots, they do not represent the segmentation. If you prefer to see the segmentation, you can hide the <code class="code docutils literal notranslate"><span class="pre">spots-positions</span></code> layer and use the <code class="code docutils literal notranslate"><span class="pre">labeled-spots</span></code> one instead. Of the same way as in the previous step, you can make this layer active to see the indices, which are the same as in the results file. If your nuclei are stained, the color of the markers depends on the category of the spot (cytoplasmic, peripheral, nuclear).</p></li>
+<li><p>Finally, you can use the <code class="code docutils literal notranslate"><span class="pre">Extract</span> <span class="pre">stats</span></code> button. This will open a CSV file in your default spreadsheet software. Keep in mind that it is a temporary file, it is not saved anywhere and will disappear as soon as you close it if you don’t save it.</p></li>
+</ul>
+</section>
+<section id="b-batch-processing">
+<h3>b. Batch processing<a class="headerlink" href="#b-batch-processing" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p>Start by making a folder in which you place all the images that you need to get processed. Note that a unique CSV file is produced for the whole batch, so make sure that your folder contains images that can be compared to each other (same acquisition conditions), otherwise, you may end up with inconsistant data.</p></li>
+<li><p>Now, you need to create the folder that will receive the control images produced by the plugin. Indeed, in case you observe odd results, the plugin produces a bunch of control images in batch mode that you can inspect if required. It is not required that the output folder is empty, but it is recommended though.</p></li>
+<li><p>Then, you can set your input and output path.</p></li>
+<li><p>Finally, you can click the <code class="code docutils literal notranslate"><span class="pre">Run</span> <span class="pre">batch</span></code> button.</p></li>
+<li><p>In Napari’s GUI, you can click on <code class="code docutils literal notranslate"><span class="pre">activity</span></code> in the lower right corner to see a progress bar. You can monitor way more precisely what is going on thanks to the terminal that tells in real time what is being done.</p></li>
+<li><p>At the end of the execution, the produced CSV is located at the root of the output folder. Each folder ending with <code class="code docutils literal notranslate"><span class="pre">.ysc</span></code> is a set of control images for one input image.</p></li>
+</ul>
+</section>
+<section id="c-results-control">
+<h3>c. Results control<a class="headerlink" href="#c-results-control" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p>Each control is a folder (instead of an image)</p></li>
+<li><p>You can simply drag’n’drop the folder (not its content) into Napari instead of opening each image that it contains. A reader recognizing folders ending with <code class="code docutils literal notranslate"><span class="pre">.ysc</span></code> <em>(yeasts spots control)</em> is bundled with the plugin.</p></li>
+<li><p>In there, each cell is represented by its outline.</p></li>
+</ul>
+</section>
+<section id="d-how-to-read-the-results">
+<h3>d. How to read the results?<a class="headerlink" href="#d-how-to-read-the-results" title="Permalink to this headline"></a></h3>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-0-0-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-0-0-0" name="0-0" role="tab" tabindex="0">Format 1844</button><button aria-controls="panel-0-0-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-1" name="0-1" role="tab" tabindex="-1">Format 1895</button></div><div aria-labelledby="tab-0-0-0" class="sphinx-tabs-panel" id="panel-0-0-0" name="0-0" role="tabpanel" tabindex="0"><ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">source</span></code>: The name of the image (without its extension) from which the following data was extracted.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">cell-index</span></code>: A unique number assigned to each cell. This number corresponds to the label on the control image. Please note that some numbers may be missing from the list if cells were cut by the image’s border (resulting in their labels being erased).</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">spot-index</span></code>: Similarly to ‘cell-index’, this value corresponds to the label on the control image.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">area</span></code>: The number of pixels covered by the spot.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">intensity-mean</span></code>: The average intensity recorded for all the pixels within the spot.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">intensity-min</span></code>: The lowest intensity recorded among all the pixels within the spot.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">intensity-max</span></code>: The highest intensity recorded among all the pixels within the spot.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">intensity-sum</span></code>: Also known as integrated intensity, this is the sum of intensities across all pixels within the spot.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">perimeter</span></code>: The length of the perimeter around the spot, measured in steps with diagonal connectivity.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">solidity</span></code>: The ratio of the spot’s area to the area of its convex hull. A star-shaped spot will have a value close to 0, while a more circular spot will have a value close to 1.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">extent</span></code>: The ratio of the spot’s area to the area of its bounding box, which is the smallest rectangle that contains the spot. This metric gives an idea of how elongated the spot is. For example, a perfect circle and a perfect ellipse will both have a solidity of 1.0, however, their extent will vary.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">#</span> <span class="pre">spots</span></code>: The number of spots detected in the given cell.</p></li>
+</ul>
+</div><div aria-labelledby="tab-0-0-1" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-1" name="0-1" role="tabpanel" tabindex="0"><ul class="simple">
+<li><p><code class="code docutils literal notranslate"><span class="pre">source</span></code>: The name of the image (without its extension) from which the following data was extracted.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">cell-index</span></code>: A unique number assigned to each cell. This number corresponds to the label on the control image. Please note that some numbers may be missing from the list if cells were cut by the image’s border (resulting in their labels being erased).</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">#</span> <span class="pre">cytoplasmic</span> <span class="pre">spots</span></code>: Number of spots found exclusively in the cytoplasms.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">#</span> <span class="pre">nuclear</span> <span class="pre">spots</span></code>: Number of spots found exclusively in the nuclei.</p></li>
+<li><p><code class="code docutils literal notranslate"><span class="pre">#</span> <span class="pre">peripheral</span> <span class="pre">spots</span></code>: Number of spots found overlaping with both the cytoplasms and the nuclei.</p></li>
+</ul>
+</div></div>
+</section>
+</section>
+<section id="notes">
+<h2>6. Notes<a class="headerlink" href="#notes" title="Permalink to this headline"></a></h2>
+<ul class="simple">
+<li><p>The plugin provides verbose output, so it’s recommended to monitor the terminal if you want detailed information about its actions.</p></li>
+<li><p>If a crash occurs, please <a class="reference external" href="https://github.com/MontpellierRessourcesImagerie/spots-in-yeasts/issues">create an issue</a> and include the relevant image(s) for further investigation.</p></li>
+<li><p>Napari currently supports only open file formats, so make sure to convert your images to TIFF format before using them with Napari.</p></li>
+</ul>
+</section>
+<section id="solidity-extent">
+<h2>7. Solidity &amp; Extent<a class="headerlink" href="#solidity-extent" title="Permalink to this headline"></a></h2>
+<table>
+   <tr>
+      <td><img src="https://dev.mri.cnrs.fr/attachments/download/3065/bounding-box.png"/></td>
+      <td style="padding-top: 50px;">The extent is measured as the ratio of the spot's area over its bounding box area. On this illustration, it is represented by the blue area divided by the orange area.</td>
+   </tr>
+   <tr>
+      <td><img src="https://dev.mri.cnrs.fr/attachments/download/3066/convex-hull.png"/></td>
+      <td style="padding-top: 50px;">The solidity is measured as the ratio of the spot's area over its convex hull area. If the spot is convex (like in the first scenario), the ratio is 1.0.</td>
+   </tr>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Spots in yeasts’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="convert_data.html" class="btn btn-neutral float-right" title="Conform your data" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Clément H. Benedetti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

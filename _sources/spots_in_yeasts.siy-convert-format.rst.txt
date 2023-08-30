@@ -1,0 +1,7 @@
+spots\_in\_yeasts.siy\-convert\-format module
+=============================================
+
+.. automodule:: spots_in_yeasts.siy-convert-format
+   :members:
+   :undoc-members:
+   :show-inheritance:

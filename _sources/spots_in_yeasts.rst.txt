@@ -1,0 +1,21 @@
+spots\_in\_yeasts package
+=========================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   spots_in_yeasts.formatData
+   spots_in_yeasts.siy-convert-format
+   spots_in_yeasts.spotsInYeasts
+   spots_in_yeasts.test-nuclei
+
+Module contents
+---------------
+
+.. automodule:: spots_in_yeasts
+   :members:
+   :undoc-members:
+   :show-inheritance:

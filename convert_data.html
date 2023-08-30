@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conform your data &mdash; Spots in yeasts 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/tabs.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="src" href="modules.html" />
+    <link rel="prev" title="Quick start: A user guide" href="user_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Spots in yeasts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">Quick start: A user guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Conform your data</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#install-the-macro">Install the macro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#use-the-macro">Use the macro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#video-tutorial">Video tutorial</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Spots in yeasts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Conform your data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/convert_data.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="conform-your-data">
+<h1>Conform your data<a class="headerlink" href="#conform-your-data" title="Permalink to this headline"></a></h1>
+<p><code class="code docutils literal notranslate"><span class="pre">Spots</span> <span class="pre">in</span> <span class="pre">yeasts</span></code> expects a very precise file as its input:</p>
+<ul class="simple">
+<li><p>The file must be a TIFF (no .czi, .nd, …)</p></li>
+<li><p>Both channels must be packed in this TIFF.</p></li>
+<li><p>The first channel must contain the spots and the second the brightfield.</p></li>
+<li><p>The number of slices is arbitrary.</p></li>
+</ul>
+<p>If your images don’t have this form, we provide you with a Fiji/ImageJ plugin that can achieve the conversion. To use it, just proceed as follow:</p>
+<section id="install-the-macro">
+<h2>Install the macro<a class="headerlink" href="#install-the-macro" title="Permalink to this headline"></a></h2>
+<ol class="arabic simple">
+<li><p>Start by opening Fiji.</p></li>
+<li><p>In the menu bar, go in <code class="code docutils literal notranslate"><span class="pre">File</span></code> → <code class="code docutils literal notranslate"><span class="pre">New</span></code> → <code class="code docutils literal notranslate"><span class="pre">Text</span> <span class="pre">Window</span></code>.</p></li>
+<li><p>In the new window that just appeared, click on the <code class="code docutils literal notranslate"><span class="pre">Language</span></code> button in the menu bar, and choose <code class="code docutils literal notranslate"><span class="pre">Python</span></code>.</p></li>
+<li><p>Copy the following code, and paste it in your code window.</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ij</span> <span class="kn">import</span> <span class="n">IJ</span><span class="p">,</span> <span class="n">Menus</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">urllib2</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<span class="k">def</span> <span class="nf">empty_folder</span><span class="p">(</span><span class="n">folder_path</span><span class="p">):</span>
+   <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">folder_path</span><span class="p">):</span>
+      <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder_path</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+      <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+      <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="n">empty_folder</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">rmdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+
+<span class="n">plugins_folder</span> <span class="o">=</span> <span class="n">IJ</span><span class="o">.</span><span class="n">getDirectory</span><span class="p">(</span><span class="s2">&quot;plugins&quot;</span><span class="p">)</span>
+<span class="n">convert_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">plugins_folder</span><span class="p">,</span> <span class="s2">&quot;siy-data-cast&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">convert_folder</span><span class="p">):</span>
+   <span class="n">empty_folder</span><span class="p">(</span><span class="n">convert_folder</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+   <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">convert_folder</span><span class="p">)</span>
+
+<span class="c1"># # # At this point, the folder shoud exist and be empty # # #</span>
+
+<span class="n">files</span> <span class="o">=</span> <span class="p">[</span>
+   <span class="s2">&quot;siy-convert-format.py&quot;</span>
+<span class="p">]</span>
+
+<span class="n">base_url</span> <span class="o">=</span> <span class="s2">&quot;https://raw.githubusercontent.com/MontpellierRessourcesImagerie/spots-in-yeasts/master/src/spots_in_yeasts/&quot;</span>
+
+<span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+   <span class="n">fullPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">convert_folder</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+   <span class="n">fullURL</span>  <span class="o">=</span> <span class="n">base_url</span> <span class="o">+</span> <span class="n">name</span>
+
+   <span class="k">try</span><span class="p">:</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fullPath</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fi</span><span class="p">:</span>
+            <span class="n">fi</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">urllib2</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">fullURL</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="n">fi</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+   <span class="k">except</span><span class="p">:</span>
+      <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Failed to download &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="p">)</span>
+   <span class="k">else</span><span class="p">:</span>
+      <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Downloaded &quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s2">&quot; successfully.&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DONE.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="5">
+<li><p>Below the text area in the window, you can click the <code class="code docutils literal notranslate"><span class="pre">Run</span></code> button.</p></li>
+<li><p>You can now close Fiji without saving anything, the macro is installed.</p></li>
+</ol>
+</section>
+<section id="use-the-macro">
+<h2>Use the macro<a class="headerlink" href="#use-the-macro" title="Permalink to this headline"></a></h2>
+<ol class="arabic simple">
+<li><p>Launch Fiji/ImageJ</p></li>
+<li><p>In the search area (lower-right of Fiji’s window), start typing <code class="code docutils literal notranslate"><span class="pre">siy-convert-format</span></code> until the macro shows up.</p></li>
+<li><p>Launch the macro.</p></li>
+<li><p>Launching the macro should open a new window, divided in three sections: I/O, Data and Order.</p></li>
+<li><p>In the I/O section, select your input folder (the folder containing your original images with the inproper format) and your output folder (an empty folder that will receive the converted images).</p></li>
+<li><p>In the Data section, fill the extension used by your images <strong>with the dot</strong> (ex: .czi, .nd)</p></li>
+<li><p>In the Order section, fill the order in which your channels are when you open an image. If you don’t have one of the proposed channels (like the nuclei marking for example), leave the field empty (with a “-“).</p></li>
+<li><p>Verify a last time your settings and click on the “Launch conversion!” button.</p></li>
+</ol>
+</section>
+<section id="video-tutorial">
+<h2>Video tutorial<a class="headerlink" href="#video-tutorial" title="Permalink to this headline"></a></h2>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/LqbifHUVYpw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user_guide.html" class="btn btn-neutral float-left" title="Quick start: A user guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="modules.html" class="btn btn-neutral float-right" title="src" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Clément H. Benedetti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

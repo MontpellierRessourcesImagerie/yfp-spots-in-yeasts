@@ -1,0 +1,7 @@
+spots\_in\_yeasts.spotsInYeasts module
+======================================
+
+.. automodule:: spots_in_yeasts.spotsInYeasts
+   :members:
+   :undoc-members:
+   :show-inheritance:

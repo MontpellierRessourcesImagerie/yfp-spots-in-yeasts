@@ -1,0 +1,7 @@
+spots\_in\_yeasts.formatData module
+===================================
+
+.. automodule:: spots_in_yeasts.formatData
+   :members:
+   :undoc-members:
+   :show-inheritance:

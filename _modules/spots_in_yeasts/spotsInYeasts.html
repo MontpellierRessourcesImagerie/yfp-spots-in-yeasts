@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spots_in_yeasts.spotsInYeasts &mdash; Spots in yeasts 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/tabs.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/tabs.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Spots in yeasts
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide.html">Quick start: A user guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../convert_data.html">Conform your data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">src</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Spots in yeasts</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../spots_in_yeasts.html">spots_in_yeasts</a></li>
+      <li class="breadcrumb-item active">spots_in_yeasts.spotsInYeasts</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for spots_in_yeasts.spotsInYeasts</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">skimage.io</span> <span class="kn">import</span> <span class="n">imsave</span>
+<span class="kn">from</span> <span class="nn">skimage.filters</span> <span class="kn">import</span> <span class="n">threshold_isodata</span><span class="p">,</span> <span class="n">threshold_otsu</span>
+<span class="kn">from</span> <span class="nn">skimage.segmentation</span> <span class="kn">import</span> <span class="n">watershed</span><span class="p">,</span> <span class="n">clear_border</span><span class="p">,</span> <span class="n">find_boundaries</span>
+<span class="kn">from</span> <span class="nn">skimage.morphology</span> <span class="kn">import</span> <span class="n">dilation</span><span class="p">,</span> <span class="n">disk</span>
+<span class="kn">from</span> <span class="nn">skimage.measure</span> <span class="kn">import</span> <span class="n">regionprops</span>
+<span class="kn">from</span> <span class="nn">skimage.measure</span> <span class="kn">import</span> <span class="n">label</span> <span class="k">as</span> <span class="n">connected_compos_labeling</span>
+<span class="kn">from</span> <span class="nn">skimage.feature</span> <span class="kn">import</span> <span class="n">peak_local_max</span>
+<span class="kn">from</span> <span class="nn">matplotlib.colors</span> <span class="kn">import</span> <span class="n">LinearSegmentedColormap</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">median_filter</span><span class="p">,</span> <span class="n">gaussian_laplace</span><span class="p">,</span> <span class="n">distance_transform_cdt</span><span class="p">,</span> <span class="n">label</span>
+<span class="kn">from</span> <span class="nn">termcolor</span> <span class="kn">import</span> <span class="n">colored</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">cv2</span><span class="o">,</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">cellpose</span> <span class="kn">import</span> <span class="n">models</span><span class="p">,</span> <span class="n">utils</span><span class="p">,</span> <span class="n">io</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">skimage</span> <span class="kn">import</span> <span class="n">exposure</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">kstest</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">binary_erosion</span><span class="p">,</span> <span class="n">binary_dilation</span>
+
+<span class="n">_coordinates</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="create_random_lut"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.create_random_lut">[docs]</a><span class="k">def</span> <span class="nf">create_random_lut</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a random LUT of 256 slots to display labeled images with colors far apart from each other.</span>
+<span class="sd">    Black is reserved for the background.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        LinearSegmentedColormap: A cmap object that can be used with the imshow() function. ex: `imshow(image, cmap=create_random_lut())`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">LinearSegmentedColormap</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="s1">&#39;random_lut&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)]),</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">3</span><span class="p">)))))</span></div>
+
+
+<div class="viewcode-block" id="write_labels_image"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.write_labels_image">[docs]</a><span class="k">def</span> <span class="nf">write_labels_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">font_scale</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates an image on which the indices of labels are literally written in the center of each label.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image: A labeled image.</span>
+<span class="sd">        fonst_scale: Size of the font to write digits.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A binary mask representing the literal index of each label.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">regions</span>   <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">canvas</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">:</span>
+        <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">=</span> <span class="n">region</span><span class="o">.</span><span class="n">centroid</span>
+        <span class="n">size</span><span class="p">,</span> <span class="n">baseline</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">getTextSize</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">region</span><span class="o">.</span><span class="n">label</span><span class="p">),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span><span class="p">,</span> <span class="n">font_scale</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">putText</span><span class="p">(</span><span class="n">canvas</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">region</span><span class="o">.</span><span class="n">label</span><span class="p">),</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="o">+</span><span class="n">size</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="mi">2</span><span class="p">)),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span><span class="p">,</span> <span class="n">font_scale</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">canvas</span></div>
+
+<div class="viewcode-block" id="find_focused_slice"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.find_focused_slice">[docs]</a><span class="k">def</span> <span class="nf">find_focused_slice</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">around</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines which slice has the best focus and selects a range of slices around it.</span>
+<span class="sd">    The process is based on the variance recorded for each slice.</span>
+<span class="sd">    Displays a warning if the number of slices is insufficient.</span>
+<span class="sd">    A safety check is performed to ensure that the returned indices are within the range of the stack&#39;s size.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        stack: (image stack) The stack in which we search the focused area.</span>
+<span class="sd">        around: (int) Number of slices to select around the most in-focus one.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (int, int): A tuple centered around the most in-focus slice. If we call &#39;F&#39; the index of that slice, then the tuple is: `(F-around, F+around)`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># If we don&#39;t have a stack, we just return a tuple filled with zeros.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The image is a single slice, not a stack.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">nSlices</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">maxSlice</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">([</span><span class="n">cv2</span><span class="o">.</span><span class="n">Laplacian</span><span class="p">(</span><span class="n">stack</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">cv2</span><span class="o">.</span><span class="n">CV_64F</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nSlices</span><span class="p">)])</span>
+    <span class="n">selected</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxSlice</span><span class="o">-</span><span class="n">around</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="n">nSlices</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">maxSlice</span><span class="o">+</span><span class="n">around</span><span class="p">))</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selected slices: (</span><span class="si">{</span><span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">selected</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">). &quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">nSlices</span><span class="si">}</span><span class="s2"> slices available)&quot;</span><span class="p">,</span> <span class="s1">&#39;dark_grey&#39;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">selected</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">selected</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span><span class="o">*</span><span class="n">around</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Focused slice too far from center!&quot;</span><span class="p">,</span> <span class="s1">&#39;yellow&#39;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">selected</span></div>
+
+
+<div class="viewcode-block" id="segment_yeasts_cells"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.segment_yeasts_cells">[docs]</a><span class="k">def</span> <span class="nf">segment_yeasts_cells</span><span class="p">(</span><span class="n">transmission</span><span class="p">,</span> <span class="n">gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes the transmission channel (brightfield) of yeast cells and segments it (instances segmentation).</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        transmission (image): Single channeled image, in brightfield, representing yeasts</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (image) An image containing labels (one value == one individual).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Cellpose</span><span class="p">(</span><span class="n">gpu</span><span class="o">=</span><span class="n">gpu</span><span class="p">,</span> <span class="n">model_type</span><span class="o">=</span><span class="s1">&#39;cyto&#39;</span><span class="p">)</span>
+    <span class="n">chan</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Segmenting cells...&quot;</span><span class="p">)</span>
+    <span class="n">masks</span><span class="p">,</span> <span class="n">flows</span><span class="p">,</span> <span class="n">styles</span><span class="p">,</span> <span class="n">diams</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span><span class="n">transmission</span><span class="p">,</span> <span class="n">diameter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="n">chan</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cells segmentation done. </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">masks</span><span class="p">))</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s2"> cells detected.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">masks</span></div>
+
+
+<div class="viewcode-block" id="place_markers"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.place_markers">[docs]</a><span class="k">def</span> <span class="nf">place_markers</span><span class="p">(</span><span class="n">shp</span><span class="p">,</span> <span class="n">m_list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Places pixels with an incremental intensity (from 1) at each position contained in the list.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A mask with black background and one pixel at each intensity from 1 to len(m_list).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shp: A 2D tuple representing the shape of the mask to be created.</span>
+<span class="sd">        m_list: A list of tuples representing 2D coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">m_list</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">tmp</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">m_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> seeds placed.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tmp</span></div>
+
+
+<span class="c1">#################################################################################</span>
+
+
+<div class="viewcode-block" id="segment_transmission"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.segment_transmission">[docs]</a><span class="k">def</span> <span class="nf">segment_transmission</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slices_around</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes the path of an image that contains some yeasts in transmission.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        stack: A numpy array representing the transmission channel</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A uint16 image containing labels. Each label corresponds to an instance of yeast cell.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Boolean value determining if we want to use all the slices of the stack, or just the most in-focus.</span>
+    <span class="n">pick_slices</span>   <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># &gt;&gt;&gt; Opening stack as an image collection:</span>
+    <span class="n">stack_sz</span>  <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">input_bf</span>  <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack_sz</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span> <span class="c1"># We have a stack, not a single image.</span>
+        <span class="c1"># &gt;&gt;&gt; Finding a range of slices in the focus area:</span>
+        <span class="k">if</span> <span class="n">pick_slices</span><span class="p">:</span>
+            <span class="n">in_focus</span> <span class="o">=</span> <span class="n">find_focused_slice</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">slices_around</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">in_focus</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">stack</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="c1"># &gt;&gt;&gt; Max projection of the stack:</span>
+        <span class="n">max_proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">stack</span><span class="p">[</span><span class="n">in_focus</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">in_focus</span><span class="p">[</span><span class="mi">1</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">input_bf</span> <span class="o">=</span> <span class="n">max_proj</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">input_bf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+    
+    <span class="c1"># &gt;&gt;&gt; Labeling the transmission channel:</span>
+    <span class="n">labeled_transmission</span> <span class="o">=</span> <span class="n">segment_yeasts_cells</span><span class="p">(</span><span class="n">input_bf</span><span class="p">,</span> <span class="n">gpu</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">labeled_transmission</span><span class="p">,</span> <span class="n">input_bf</span></div>
+
+
+<span class="c1">#################################################################################</span>
+
+<div class="viewcode-block" id="associate_spots_yeasts"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.associate_spots_yeasts">[docs]</a><span class="k">def</span> <span class="nf">associate_spots_yeasts</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_spots</span><span class="p">,</span> <span class="n">fluo_spots</span><span class="p">,</span> <span class="n">area_threshold_down</span><span class="p">,</span> <span class="n">area_threshold_up</span><span class="p">,</span> <span class="n">solidity_threshold</span><span class="p">,</span> <span class="n">extent_threshold</span><span class="p">,</span> <span class="n">classification</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Associates each spot with the label it belongs to.</span>
+<span class="sd">    A safety check is performed to make sure no spot falls in the background.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_cells: A single-channeled image with dtype=uint16 containing the segmented transmission image.</span>
+<span class="sd">        labeled_spots: A labelised image representing spots</span>
+<span class="sd">        fluo_spots: The original fluo image containing spots.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A dictionary in which keys are the labels of each cell. Each key points to a list of dictionary. Each element of the list corresponds to a spot.</span>
+<span class="sd">        An image representing labels in the fluo channel (a label per spot) is also returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">unique_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">)</span>
+    <span class="n">ownership</span>     <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">u</span><span class="p">):</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">unique_values</span> <span class="k">if</span> <span class="p">(</span><span class="n">u</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)}</span>
+    <span class="n">spots_props</span>   <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_spots</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">fluo_spots</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">spot</span> <span class="ow">in</span> <span class="n">spots_props</span><span class="p">:</span>
+        <span class="n">cds</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">spot</span><span class="o">.</span><span class="n">centroid</span><span class="p">]</span>
+        <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">cds</span>
+        <span class="n">lbl</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">[</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">lbl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span> <span class="c1"># We are in the background</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">area_threshold_up</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">area_threshold_down</span><span class="p">):</span>
+            <span class="k">continue</span>
+        
+        <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;solidity&#39;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">solidity_threshold</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">extent_threshold</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+        <span class="n">ownership</span><span class="p">[</span><span class="n">lbl</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;label&#39;</span>         <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]),</span>
+            <span class="s1">&#39;location&#39;</span>      <span class="p">:</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span>
+            <span class="s1">&#39;intensity_mean&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;intensity_mean&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;intensity_min&#39;</span> <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;intensity_min&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;intensity_max&#39;</span> <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;intensity_max&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;area&#39;</span>          <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;perimeter&#39;</span>     <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;perimeter&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;solidity&#39;</span>      <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;solidity&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;extent&#39;</span>        <span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">]),</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="s1">&#39;intensity_sum&#39;</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spot</span><span class="o">.</span><span class="n">intensity_image</span><span class="p">)),</span>
+            <span class="s1">&#39;category&#39;</span>      <span class="p">:</span> <span class="n">classification</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">spot</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">])]</span> <span class="k">if</span> <span class="p">(</span><span class="n">classification</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">})</span>
+    
+    <span class="n">compare</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">sub_list</span> <span class="ow">in</span> <span class="n">ownership</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sub_list</span><span class="p">])</span>
+    <span class="n">removed_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">labeled_spots</span><span class="p">,</span> <span class="n">compare</span><span class="p">,</span> <span class="n">invert</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">labeled_spots</span><span class="p">[</span><span class="n">removed_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">ownership</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;location&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">sub_list</span> <span class="ow">in</span> <span class="n">ownership</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">sub_list</span><span class="p">]),</span> <span class="n">labeled_spots</span></div>
+
+
+<div class="viewcode-block" id="segment_spots"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.segment_spots">[docs]</a><span class="k">def</span> <span class="nf">segment_spots</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">labeled_cells</span><span class="p">,</span> <span class="n">death_threshold</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">peak_d</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">threshold_rel</span><span class="o">=</span><span class="mf">0.7</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        stack: A numpy array representing the fluo channel</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A dictionary containing several pieces of information about spots.</span>
+<span class="sd">         - original: The input image after maximal projection</span>
+<span class="sd">         - contrasted: A version of the channel stretched on the whole histogram.</span>
+<span class="sd">         - mask: A labeled image containing an index per detected spot.</span>
+<span class="sd">         - locations: A list of 2D coordinates representing each spot.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># &gt;&gt;&gt; Opening fluo spots stack</span>
+    <span class="n">stack_sz</span>     <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">input_fSpots</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># &gt;&gt;&gt; Max projection of the stack</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack_sz</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span> <span class="c1"># We have a stack, not a single image.</span>
+        <span class="n">input_fSpots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">stack</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">input_fSpots</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+
+    <span class="c1"># &gt;&gt;&gt; Contrast augmentation + noise reduction</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting spots segmentation...&quot;</span><span class="p">)</span>
+    <span class="n">save_fSpots</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">input_fSpots</span><span class="p">)</span>
+    <span class="n">input_fSpots</span> <span class="o">=</span> <span class="n">median_filter</span><span class="p">(</span><span class="n">input_fSpots</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># &gt;&gt;&gt; LoG filter + thresholding</span>
+    <span class="n">asf</span>  <span class="o">=</span> <span class="n">input_fSpots</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">LoG</span>  <span class="o">=</span> <span class="n">gaussian_laplace</span><span class="p">(</span><span class="n">asf</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+    <span class="n">t</span>    <span class="o">=</span> <span class="n">threshold_isodata</span><span class="p">(</span><span class="n">LoG</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">LoG</span> <span class="o">&lt;</span> <span class="n">t</span>
+
+    <span class="c1"># &gt;&gt;&gt; Detection of spots location</span>
+    <span class="n">asf</span>     <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">chamfer</span> <span class="o">=</span> <span class="n">distance_transform_cdt</span><span class="p">(</span><span class="n">asf</span><span class="p">)</span>
+    <span class="n">maximas</span> <span class="o">=</span> <span class="n">peak_local_max</span><span class="p">(</span><span class="n">chamfer</span><span class="p">,</span> <span class="n">min_distance</span><span class="o">=</span><span class="n">peak_d</span><span class="p">,</span> <span class="n">threshold_rel</span><span class="o">=</span><span class="n">threshold_rel</span><span class="p">)</span>
+
+    <span class="c1"># Removing dead cells</span>
+    <span class="n">dead_cells</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">props</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">save_fSpots</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s1">&#39;intensity_mean&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">death_threshold</span><span class="p">:</span>
+            <span class="n">dead_cells</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">props</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">])</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">dead_cells</span><span class="p">)</span><span class="si">}</span><span class="s2"> are now considered dead due to an excessive intensity.&quot;</span><span class="p">)</span>
+    <span class="n">remove_labels</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">dead_cells</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">maximas</span><span class="p">)</span><span class="si">}</span><span class="s2"> spots found.&quot;</span><span class="p">)</span>
+
+    <span class="n">maximas</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">maximas</span> <span class="k">if</span> <span class="n">labeled_cells</span><span class="p">[</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># &gt;&gt;&gt; Isolating instances of spots</span>
+    <span class="n">m_shape</span>   <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">markers</span>   <span class="o">=</span> <span class="n">place_markers</span><span class="p">(</span><span class="n">m_shape</span><span class="p">,</span> <span class="n">maximas</span><span class="p">)</span>
+    <span class="n">lbd_spots</span> <span class="o">=</span> <span class="n">watershed</span><span class="p">(</span><span class="o">~</span><span class="n">mask</span><span class="p">,</span> <span class="n">markers</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+
+    <span class="c1"># Sorting coordinates by label index.</span>
+    <span class="n">maximas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">([(</span><span class="n">lbd_spots</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">],</span> <span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="ow">in</span> <span class="n">maximas</span><span class="p">])])</span>
+
+    <span class="c1"># &gt;&gt;&gt; List of spots coordinates, labeled spots, flattened version of spots&#39; fluo channel.</span>
+    <span class="k">return</span> <span class="n">maximas</span><span class="p">,</span> <span class="n">lbd_spots</span><span class="p">,</span> <span class="n">save_fSpots</span></div>
+
+
+<span class="c1">################################################################</span>
+
+<div class="viewcode-block" id="prepare_directory"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.prepare_directory">[docs]</a><span class="k">def</span> <span class="nf">prepare_directory</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepares a directory to receive the control images for the batch mode.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="c1"># Empty the folder</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">islink</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+                    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to delete </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">. Reason: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Create the folder</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+
+<span class="c1">######################################################################</span>
+
+<div class="viewcode-block" id="remove_labels"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.remove_labels">[docs]</a><span class="k">def</span> <span class="nf">remove_labels</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">labels</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Macro-function removing some labels from an image. The modification is made in-place.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image: A labeled image.</span>
+<span class="sd">        labels: A set of indices that we want to remove from `image`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lbls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">l</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">])</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">lbls</span><span class="p">)</span>
+    <span class="n">image</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="fill_holes"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.fill_holes">[docs]</a><span class="k">def</span> <span class="nf">fill_holes</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A hole is a background area surrounded by a unique label and from which we can&#39;t reach the image&#39;s border.</span>
+<span class="sd">    No in-place editing.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image: A labeled image on black background</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The same image as input but without holes in labels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">bg_mask</span> <span class="o">=</span> <span class="n">clear_border</span><span class="p">(</span><span class="n">connected_compos_labeling</span><span class="p">(</span><span class="n">binary_dilation</span><span class="p">(</span><span class="n">image</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+    <span class="n">props</span>   <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">bg_mask</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">image</span><span class="p">)</span>
+
+    <span class="n">lut</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">props</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">region</span><span class="o">.</span><span class="n">label</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">region</span><span class="p">[</span><span class="s1">&#39;image_intensity&#39;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">region</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">data</span><span class="p">))</span><span class="o">.</span><span class="n">difference</span><span class="p">({</span><span class="mi">0</span><span class="p">})</span>
+        <span class="n">lut</span><span class="p">[</span><span class="n">region</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">replace_with_dict</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">lut</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    
+    <span class="n">vfunc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="n">replace_with_dict</span><span class="p">)</span>
+    <span class="n">new_array</span> <span class="o">=</span> <span class="n">vfunc</span><span class="p">(</span><span class="n">bg_mask</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">new_array</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="YeastsPartitionGraph"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph">[docs]</a><span class="k">class</span> <span class="nc">YeastsPartitionGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class implementing the Hopcroft-Karp algorithm to create a maximal dual-matching.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span><span class="p">,</span> <span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span>      <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">partitions</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">}</span>
+        
+        <span class="k">for</span> <span class="n">cell_lbl</span><span class="p">,</span> <span class="n">neighbor_cells</span> <span class="ow">in</span> <span class="n">o_graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ppts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cell_lbl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ppts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">vertices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">find_partition</span><span class="p">(</span><span class="n">cell_lbl</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">)</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">vertex</span><span class="p">,</span> <span class="n">partition</span><span class="p">,</span> <span class="n">bound</span><span class="p">,</span> <span class="n">coords</span><span class="p">)</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">vertex</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;neighbors&#39;</span>  <span class="p">:</span> <span class="n">o_graph</span><span class="p">[</span><span class="n">vertex</span><span class="p">][</span><span class="s1">&#39;neighbors&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                    <span class="s1">&#39;partition&#39;</span>  <span class="p">:</span> <span class="n">partition</span><span class="p">,</span>
+                    <span class="s1">&#39;bound_to&#39;</span>   <span class="p">:</span> <span class="n">bound</span> <span class="k">if</span> <span class="p">(</span><span class="n">bound</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;coordinates&#39;</span><span class="p">:</span> <span class="n">coords</span><span class="p">,</span>
+                    <span class="s1">&#39;dist&#39;</span>       <span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">launch_hopcroft_karp</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">make_new_labels</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_borders</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Maximum bipartite matching of the adjacency graph finished.&quot;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">))</span>
+
+<div class="viewcode-block" id="YeastsPartitionGraph.remove_borders"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.remove_borders">[docs]</a>    <span class="k">def</span> <span class="nf">remove_borders</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">binary_erosion</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">iterations</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">working_copy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">)</span>
+        <span class="n">working_copy</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">discarded</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">working_copy</span><span class="p">))</span><span class="o">.</span><span class="n">difference</span><span class="p">({</span><span class="mi">0</span><span class="p">})])</span>
+        <span class="n">remove_labels</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">discarded</span><span class="p">)</span>
+        <span class="n">remove_labels</span><span class="p">(</span><span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">discarded</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">discarded</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells removed because they are cut by the border.&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="YeastsPartitionGraph.find_partition"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.find_partition">[docs]</a>    <span class="k">def</span> <span class="nf">find_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vertex</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">):</span>
+        <span class="n">nucleus_lbl</span> <span class="o">=</span> <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">vertex</span><span class="p">][</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">nucleus_lbl</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="c1"># 0 means that this cell doesn&#39;t have a nucleus.</span>
+            <span class="k">return</span> <span class="p">[(</span><span class="n">vertex</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">[</span><span class="n">vertex</span><span class="p">][</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])]</span> <span class="c1"># Vertices with no nuclei are stored in the partition 2.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">n_usage</span> <span class="o">=</span> <span class="n">nucleus_to_cells</span><span class="p">[</span><span class="n">nucleus_lbl</span><span class="p">][</span><span class="s1">&#39;used&#39;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">n_usage</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell_lbl</span> <span class="k">for</span> <span class="n">cell_lbl</span><span class="p">,</span> <span class="n">cell_props</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cell_to_nuclei</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">cell_props</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">cell_props</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">nucleus_lbl</span><span class="p">)]</span>
+                <span class="k">return</span> <span class="p">[(</span><span class="n">c1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">c2</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">[</span><span class="n">c1</span><span class="p">][</span><span class="s1">&#39;coordinates&#39;</span><span class="p">]),</span> <span class="p">(</span><span class="n">c2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">c1</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">[</span><span class="n">c2</span><span class="p">][</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])]</span>
+            
+            <span class="k">if</span> <span class="n">n_usage</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[(</span><span class="n">vertex</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">o_graph</span><span class="p">[</span><span class="n">vertex</span><span class="p">][</span><span class="s1">&#39;coordinates&#39;</span><span class="p">])]</span>
+
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;This case is not handled. (n_usage=</span><span class="si">{</span><span class="n">n_usage</span><span class="si">}</span><span class="s2"> for cell </span><span class="si">{</span><span class="n">vertex</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="YeastsPartitionGraph.make_cells_lut"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_cells_lut">[docs]</a>    <span class="k">def</span> <span class="nf">make_cells_lut</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">lut</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># partition 2: pas de nucleus, partition 1: a un nucleus</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">props</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s1">&#39;partition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="c1"># If the cell is bound to nobody but has a nucleus (independent cell)</span>
+                    <span class="n">lut</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">current</span>
+                    <span class="n">current</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lut</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># discarding the cell. Bound to nodoby and no nucleus.</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="n">props</span><span class="p">[</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">lut</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">lut</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">current</span>
+                    <span class="n">lut</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="n">current</span>
+                    <span class="n">current</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="k">return</span> <span class="n">lut</span></div>
+
+<div class="viewcode-block" id="YeastsPartitionGraph.make_nuclei_lut"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_nuclei_lut">[docs]</a>    <span class="k">def</span> <span class="nf">make_nuclei_lut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">cells_lut</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Makes a dictionary to transform the indices of nuclei.</span>
+<span class="sd">        It is used to make the nuclei indices match their owner cell&#39;s index.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cell_to_nuclei: Structure giving for a cell the index of its nucleus.</span>
+<span class="sd">            cells_lut: LUT used to make mother and daughter cells match each other&#39;s label.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A LUT to transform the nuclei indices.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lut</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">cell_lbl</span><span class="p">,</span> <span class="n">cell_props</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cell_to_nuclei</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">cell_props</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">lut</span><span class="p">[</span><span class="n">cell_props</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">cells_lut</span><span class="p">[</span><span class="n">cell_lbl</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">lut</span></div>
+
+<div class="viewcode-block" id="YeastsPartitionGraph.make_new_labels"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.make_new_labels">[docs]</a>    <span class="k">def</span> <span class="nf">make_new_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_labels</span><span class="p">,</span> <span class="n">old_nuclei</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">):</span>
+        <span class="c1"># Cells part</span>
+        <span class="n">lut_cells</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_cells_lut</span><span class="p">()</span>
+        <span class="n">lut_nuclei</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_nuclei_lut</span><span class="p">(</span><span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">lut_cells</span><span class="p">)</span>
+        
+        <span class="k">def</span> <span class="nf">replace_cells_labels</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">lut_cells</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">vfunc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="n">replace_cells_labels</span><span class="p">)</span>
+        <span class="n">new_labels</span> <span class="o">=</span> <span class="n">vfunc</span><span class="p">(</span><span class="n">old_labels</span><span class="p">)</span>
+        <span class="n">new_labels</span> <span class="o">=</span> <span class="n">fill_holes</span><span class="p">(</span><span class="n">new_labels</span><span class="p">)</span>
+
+        <span class="n">old_labels</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">new_labels</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+
+        <span class="c1"># Nuclei part (we want nuclei labels to mach their cell)</span>
+        <span class="k">def</span> <span class="nf">replace_nuclei_labels</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">lut_nuclei</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">vfunc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vectorize</span><span class="p">(</span><span class="n">replace_nuclei_labels</span><span class="p">)</span>
+        <span class="n">new_nuclei</span> <span class="o">=</span> <span class="n">vfunc</span><span class="p">(</span><span class="n">old_nuclei</span><span class="p">)</span>
+        <span class="n">old_nuclei</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">new_nuclei</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">old_nuclei</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells left after merging mothers and daughters.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="YeastsPartitionGraph.bfs"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.bfs">[docs]</a>    <span class="k">def</span> <span class="nf">bfs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">ppts</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">ppts</span><span class="p">[</span><span class="s1">&#39;partition&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">ppts</span><span class="p">[</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ppts</span><span class="p">[</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ppts</span><span class="p">[</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="kc">None</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="kc">None</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;neighbors&#39;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;partition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">):</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+                            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">])</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="kc">None</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="YeastsPartitionGraph.dfs"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.dfs">[docs]</a>    <span class="k">def</span> <span class="nf">dfs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">node</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;neighbors&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;partition&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dfs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">v</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">node</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;dist&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="YeastsPartitionGraph.launch_hopcroft_karp"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.YeastsPartitionGraph.launch_hopcroft_karp">[docs]</a>    <span class="k">def</span> <span class="nf">launch_hopcroft_karp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">matching</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;neighbors&#39;</span> <span class="p">:</span> <span class="nb">set</span><span class="p">(),</span>
+                <span class="s1">&#39;partition&#39;</span>  <span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="s1">&#39;coordinates&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                <span class="s1">&#39;bound_to&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;dist&#39;</span>    <span class="p">:</span> <span class="mi">0</span>
+            <span class="p">}</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">bfs</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;partition&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="n">node</span><span class="p">][</span><span class="s1">&#39;bound_to&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">dfs</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+                    <span class="n">matching</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">graph</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">matching</span></div></div>
+
+
+<div class="viewcode-block" id="nuclei_from_fluo"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.nuclei_from_fluo">[docs]</a><span class="k">def</span> <span class="nf">nuclei_from_fluo</span><span class="p">(</span><span class="n">stack_fluo_nuclei</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Produces a segmentation of nuclei based on the nuclei marking (either a single slice or a stack).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        An image or a stack representing the nuclei marking.</span>
+<span class="sd">    </span>
+<span class="sd">    Results:</span>
+<span class="sd">        The MIP of the provided image and a labeled version of nuclei.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Opening fluo spots stack</span>
+    <span class="n">stack_sz</span>    <span class="o">=</span> <span class="n">stack_fluo_nuclei</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">fluo_nuclei</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Max projection of the stack</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack_sz</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span> <span class="c1"># We have a stack, not a single image.</span>
+        <span class="n">fluo_nuclei</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">stack_fluo_nuclei</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fluo_nuclei</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">stack_fluo_nuclei</span><span class="p">)</span>
+    
+    <span class="c1"># Creating a basic mask representing nuclei.</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">threshold_otsu</span><span class="p">(</span><span class="n">fluo_nuclei</span><span class="p">)</span>
+    <span class="n">mask_nuclei</span> <span class="o">=</span> <span class="n">fluo_nuclei</span> <span class="o">&gt;</span> <span class="n">t</span>
+    <span class="n">lbl_nuclei</span> <span class="o">=</span> <span class="n">connected_compos_labeling</span><span class="p">(</span><span class="n">mask_nuclei</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fluo_nuclei</span><span class="p">,</span> <span class="n">lbl_nuclei</span></div>
+
+<div class="viewcode-block" id="is_undirected"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.is_undirected">[docs]</a><span class="k">def</span> <span class="nf">is_undirected</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Checks whether a graph is undirected or not. &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">ns</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">[</span><span class="n">n</span><span class="p">]:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="get_neighbors"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.get_neighbors">[docs]</a><span class="k">def</span> <span class="nf">get_neighbors</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">_coordinates</span>
+    <span class="n">new_coordinates</span> <span class="o">=</span> <span class="p">[(</span><span class="n">l</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">c</span><span class="o">+</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_coordinates</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="ow">in</span> <span class="n">new_coordinates</span> <span class="k">if</span> <span class="p">(</span><span class="n">y</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">x</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">y</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="n">width</span><span class="p">)])</span><span class="o">.</span><span class="n">T</span></div>
+
+<div class="viewcode-block" id="adjacency_graph"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.adjacency_graph">[docs]</a><span class="k">def</span> <span class="nf">adjacency_graph</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">check_undirected</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates the adjacency graph of the segmented cells.</span>
+<span class="sd">    Two cells are called &quot;adjacent&quot; if their labels are touching one another in 8-connectivity.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_cells: The labeled image representing segmented cells.</span>
+<span class="sd">        check_undirected: Activate the cheking of the graph essential properties (only for debug purposes).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A dictionary representing the cells as a graph, indexed by cells&#39; labels.</span>
+<span class="sd">        For each label, gives: its location and its neighbors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">labeled_cells</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">graph</span>    <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">contacts</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Building adjacency graph of the cells.&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span> <span class="n">cell_label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndenumerate</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cell_label</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cell_label</span><span class="p">,</span> <span class="nb">set</span><span class="p">())</span>
+        <span class="n">ys</span><span class="p">,</span> <span class="n">xs</span> <span class="o">=</span> <span class="n">get_neighbors</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labeled_cells</span><span class="p">[</span><span class="n">ys</span><span class="p">,</span> <span class="n">xs</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">lbl</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">lbl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">lbl</span> <span class="o">!=</span> <span class="n">cell_label</span><span class="p">):</span>
+                <span class="n">tpl</span> <span class="o">=</span> <span class="p">(</span><span class="n">lbl</span><span class="p">,</span> <span class="n">cell_label</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">lbl</span> <span class="o">&lt;</span> <span class="n">cell_label</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">cell_label</span><span class="p">,</span> <span class="n">lbl</span><span class="p">)</span>
+                <span class="n">contacts</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">tpl</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">contacts</span><span class="p">[</span><span class="n">tpl</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">graph</span><span class="p">[</span><span class="n">cell_label</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">lbl</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">),</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">contacts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span> <span class="c1"># We cut the edge if the contact surface is too small.</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="n">graph</span><span class="p">[</span><span class="n">a</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+            <span class="n">graph</span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">check_undirected</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_undirected</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;The graph is undirected.&quot;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Error. The graph is not undirected.&quot;</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">))</span>
+
+    <span class="n">regions</span> <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">)</span>
+    <span class="n">cleaned</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">regions</span><span class="p">:</span>
+        <span class="n">cleaned</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;neighbors&#39;</span><span class="p">:</span> <span class="n">graph</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">label</span><span class="p">],</span> <span class="s1">&#39;coordinates&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">centroid</span><span class="p">]}</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Adjacency graph succesfully built.&quot;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">cleaned</span></div>
+
+<div class="viewcode-block" id="remove_excessive_coverage"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.remove_excessive_coverage">[docs]</a><span class="k">def</span> <span class="nf">remove_excessive_coverage</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">covering_threshold</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Removing cells in which the nucleus occupies too much surface (dead cell).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_cells: The image containing the labeled cells.</span>
+<span class="sd">        labeled_nuclei: The image containing the labeled nuclei.</span>
+<span class="sd">        covering_threshold: Percentage of a cell that must be covered by nuclei for this cell to be considered dead.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Two sets containing the indices of discarded nuclei and the indices of discarded cells.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1">#</span>
+    <span class="c1"># Principle:</span>
+    <span class="c1">#     1. Transform nuclei into mask</span>
+    <span class="c1">#     2. Create a new image which is a copy of the cells from which we subtract our mask</span>
+    <span class="c1">#     3. Measure the area of cells labels in both images</span>
+    <span class="c1">#     4. Make the ratio to determine what was the region occupied by the nucleus in each cell.</span>
+    <span class="c1">#</span>
+    
+    <span class="n">mask_nuclei</span> <span class="o">=</span> <span class="n">labeled_nuclei</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">remaining_cells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">)</span>
+    <span class="n">remaining_cells</span><span class="p">[</span><span class="n">mask_nuclei</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># We punch holes in cells.</span>
+    <span class="n">regions_before</span> <span class="o">=</span> <span class="p">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]:</span> <span class="p">(</span>
+        <span class="n">r</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">],</span> 
+        <span class="n">r</span><span class="p">[</span><span class="s1">&#39;centroid&#39;</span><span class="p">],</span> 
+        <span class="nb">sorted</span><span class="p">([(</span><span class="n">count</span><span class="p">,</span> <span class="n">unq</span><span class="p">)</span> <span class="k">for</span> <span class="n">unq</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;image_intensity&#39;</span><span class="p">],</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="k">if</span> <span class="p">(</span><span class="n">unq</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)])</span>
+        <span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">labeled_nuclei</span><span class="p">)}</span>
+    
+    <span class="n">regions_after</span>    <span class="o">=</span> <span class="p">{</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]:</span> <span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s1">&#39;area&#39;</span><span class="p">],</span> <span class="n">r</span><span class="p">[</span><span class="s1">&#39;centroid&#39;</span><span class="p">])</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">remaining_cells</span><span class="p">)}</span>
+    <span class="n">discarded_cells</span>  <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">discarded_nuclei</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">cell_lbl</span><span class="p">,</span> <span class="n">cell_props</span> <span class="ow">in</span> <span class="n">regions_before</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">regions_after</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cell_lbl</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># The cell was completly obliterated and doesn&#39;t exist anymore.</span>
+            <span class="n">discarded_cells</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell_lbl</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">cell_props</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># area_after / area_before</span>
+        <span class="k">if</span> <span class="n">ratio</span> <span class="o">&lt;</span> <span class="n">covering_threshold</span><span class="p">:</span>
+            <span class="n">discarded_cells</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell_lbl</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cell_props</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">discarded_nuclei</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cell_props</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">discarded_cells</span><span class="p">)</span><span class="si">}</span><span class="s2"> cells were discarded due to their nucleus covering them.&quot;</span><span class="p">)</span>
+    <span class="n">remove_labels</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">discarded_cells</span><span class="p">)</span>
+    <span class="n">remove_labels</span><span class="p">(</span><span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">discarded_nuclei</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">discarded_cells</span><span class="p">,</span> <span class="n">discarded_nuclei</span></div>
+
+
+<div class="viewcode-block" id="assign_nucleus"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.assign_nucleus">[docs]</a><span class="k">def</span> <span class="nf">assign_nucleus</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">covering_threshold</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    First step of the nuclei segmentation. It starts by finding all the cells having &quot;their own nucleus&quot; (== a cell overlaped by a nucleus)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_cells: The image containing the labeled cells.</span>
+<span class="sd">        labeled_nuclei: The image containing the labeled nuclei.</span>
+<span class="sd">        covering_threshold: Percentage of a cell that must be covered by nuclei for this cell to be considered dead.</span>
+<span class="sd">        graph: Adjacency graph of the labeled cells.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        - The labeled cells from which we removed invalid individuals.</span>
+<span class="sd">        - The labeled nuclei</span>
+<span class="sd">        - The adjacency graph from which we removed dead individuals.</span>
+<span class="sd">        - A structure mapping cells indices to nuclei indices.</span>
+<span class="sd">        - A structure mapping nuclei indices to cells indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1"># 1. We remove cells covered too much by some nuclei.</span>
+    <span class="n">discarded_cells</span><span class="p">,</span> <span class="n">discarded_nuclei</span> <span class="o">=</span> <span class="n">remove_excessive_coverage</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">covering_threshold</span><span class="p">)</span>
+
+    <span class="c1"># 2. Defining variables.</span>
+    <span class="n">nucleus_to_cells</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">discarded_nuclei</span><span class="o">.</span><span class="n">union</span><span class="p">({</span><span class="mi">0</span><span class="p">})),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">labeled_nuclei</span><span class="p">))</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+    <span class="n">cell_to_nuclei</span>   <span class="o">=</span> <span class="p">[{</span>
+                    <span class="s1">&#39;users&#39;</span> <span class="p">:</span> <span class="nb">set</span><span class="p">(),</span> <span class="c1"># Nuclei overlaping with this cell.</span>
+                    <span class="s1">&#39;valid&#39;</span> <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># Boolean indicating if the cell will be discarded.</span>
+                    <span class="s1">&#39;owner&#39;</span> <span class="p">:</span> <span class="mi">0</span><span class="p">,</span>     <span class="c1"># Nucleus owning this cell.</span>
+                    <span class="s1">&#39;stable&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="c1"># True if we found a nucleus belonging ONLY to this cell (not shared with another).</span>
+                    <span class="s1">&#39;center&#39;</span><span class="p">:</span> <span class="kc">False</span>  <span class="c1"># True if the centroid of a nucleus was found in this cell.</span>
+                <span class="p">}</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">discarded_cells</span><span class="o">.</span><span class="n">union</span><span class="p">({</span><span class="mi">0</span><span class="p">})),</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">))</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+
+    <span class="c1"># 3. Building an association table in both ways (nucleus -&gt; cells &amp; cell -&gt; nuclei)</span>
+    <span class="n">nuclei_props</span>  <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">labeled_cells</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">nucleus</span> <span class="ow">in</span> <span class="n">nuclei_props</span><span class="p">:</span> <span class="c1"># In this loop, we iterate through nuclei to find by how many cells it&#39;s being used.</span>
+        <span class="n">nucleus_lbl</span> <span class="o">=</span> <span class="n">nucleus</span><span class="o">.</span><span class="n">label</span>
+        <span class="n">l</span><span class="p">,</span> <span class="n">c</span>        <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">nucleus</span><span class="o">.</span><span class="n">centroid</span><span class="p">]</span>
+        <span class="n">cell_lbl</span>    <span class="o">=</span> <span class="n">labeled_cells</span><span class="p">[</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">]</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">nucleus</span><span class="p">[</span><span class="s1">&#39;image&#39;</span><span class="p">])</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">nucleus</span><span class="p">[</span><span class="s1">&#39;intensity_image&#39;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>  <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">unq</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cell_labels</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([(</span><span class="n">i</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">unq</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">c</span> <span class="o">&gt;=</span> <span class="mi">15</span><span class="p">)])</span> <span class="c1"># Labels of all the cells this nucleus intersects with.</span>
+
+        <span class="c1"># Recording which cells the nucleus participates in</span>
+        <span class="n">nucleus_to_cells</span><span class="p">[</span><span class="n">nucleus_lbl</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;users&#39;</span>   <span class="p">:</span> <span class="n">cell_labels</span><span class="p">,</span>
+            <span class="s1">&#39;centroid&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span>
+            <span class="s1">&#39;at&#39;</span>      <span class="p">:</span> <span class="n">cell_lbl</span><span class="p">,</span>
+            <span class="s1">&#39;valid&#39;</span>   <span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;used&#39;</span>    <span class="p">:</span> <span class="mi">0</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Recording which nuclei a given cell uses.</span>
+        <span class="k">for</span> <span class="n">lbl</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">cell_labels</span><span class="p">:</span>
+            <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">lbl</span><span class="p">][</span><span class="s1">&#39;users&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">nucleus_lbl</span><span class="p">)</span>
+                
+    <span class="c1"># 4. Validation phase</span>
+    <span class="k">for</span> <span class="n">nucleus_lbl</span><span class="p">,</span> <span class="n">nucleus_props</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nucleus_to_cells</span><span class="p">):</span>
+        
+        <span class="c1"># No nucleus with this label or nucleus already discarded.</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">nucleus_props</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">continue</span>
+        
+        <span class="c1"># An isolated nucleus (falling in the background) can be discarded.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Nucleus that participates in only one cell (fragmented nucleus, stable cell, ...)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span> 
+            <span class="n">cell_lbl</span>  <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">cell_ppts</span> <span class="o">=</span> <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">cell_lbl</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]:</span> <span class="c1"># The only cell it participates in is not valid.</span>
+                <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">continue</span>
+            
+            <span class="k">if</span> <span class="p">(</span><span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;stable&#39;</span><span class="p">]):</span> <span class="c1"># The cell already has an owner: we are on a fragmented nucleus</span>
+                    <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;stable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span> <span class="c1"># There was simply another nucleus intersecting before</span>
+                    <span class="n">nucleus_to_cells</span><span class="p">[</span><span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]][</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+
+            <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">nucleus_lbl</span>
+            <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;stable&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># There are several cells overlaping with this nucleus</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">main_cell</span> <span class="o">=</span> <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;at&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">cell_lbl</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">]:</span>
+                <span class="n">cell_ppts</span> <span class="o">=</span> <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">cell_lbl</span><span class="p">]</span>
+                
+                <span class="k">if</span> <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;stable&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">]:</span>
+                    <span class="k">continue</span>
+
+                <span class="k">if</span> <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">nucleus_to_cells</span><span class="p">[</span><span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]][</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+
+                <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">nucleus_lbl</span>
+                <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">cell_ppts</span><span class="p">[</span><span class="s1">&#39;center&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cell_lbl</span> <span class="o">==</span> <span class="n">main_cell</span><span class="p">)</span>
+
+    
+    <span class="k">for</span> <span class="n">nucleus_lbl</span><span class="p">,</span> <span class="n">nucleus_props</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nucleus_to_cells</span><span class="p">):</span> <span class="c1"># Droping nuclei participating in 0 or more than 2 cells.</span>
+        <span class="k">if</span> <span class="n">nucleus_props</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">user</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">user</span><span class="p">][</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">nucleus_lbl</span><span class="p">:</span>
+                    <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">user</span><span class="p">][</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            
+            <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">usages</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;users&#39;</span><span class="p">]),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            
+            <span class="n">cell1</span><span class="p">,</span> <span class="n">count1</span> <span class="o">=</span> <span class="n">usages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">cell1</span><span class="p">][</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nucleus_lbl</span>
+            <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="n">cell2</span><span class="p">,</span> <span class="n">count2</span> <span class="o">=</span> <span class="n">usages</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">count2</span> <span class="o">&gt;=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">count1</span><span class="p">:</span>
+                <span class="n">cell_to_nuclei</span><span class="p">[</span><span class="n">cell2</span><span class="p">][</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nucleus_lbl</span>
+                <span class="n">nucleus_props</span><span class="p">[</span><span class="s1">&#39;used&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span></div>
+
+
+<div class="viewcode-block" id="segment_nuclei"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.segment_nuclei">[docs]</a><span class="k">def</span> <span class="nf">segment_nuclei</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">stack_fluo_nuclei</span><span class="p">,</span> <span class="n">threshold_coverage</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Launches the procedure to segment nuclei from the dedicated fluo channel, and merge mother cells with their daughter if the division process is still ongoing.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_yeasts: Image containing the labeled yeast cells.</span>
+<span class="sd">        stack_fluo_nuclei: Image containing the stained nuclei.</span>
+<span class="sd">        threshold_coverage: Percentage (in [0.0, 1.0]) of a cell that must be covered by a nucleus to be considered dead.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        - The maximal projection of the stained nuclei channel.</span>
+<span class="sd">        - The labeled yeasts from which we removed the dead cells.</span>
+<span class="sd">        - The image containing the labeled nuclei.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">labeled_yeasts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">)</span>
+    <span class="n">flattened_nuclei</span><span class="p">,</span> <span class="n">labeled_nuclei</span> <span class="o">=</span> <span class="n">nuclei_from_fluo</span><span class="p">(</span><span class="n">stack_fluo_nuclei</span><span class="p">)</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">adjacency_graph</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting nuclei segmentation.&quot;</span><span class="p">)</span>
+    <span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span> <span class="o">=</span> <span class="n">assign_nucleus</span><span class="p">(</span><span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">threshold_coverage</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
+    <span class="n">ypg</span> <span class="o">=</span> <span class="n">YeastsPartitionGraph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">cell_to_nuclei</span><span class="p">,</span> <span class="n">nucleus_to_cells</span><span class="p">,</span> <span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Segmentation of nuclei done.&quot;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">flattened_nuclei</span><span class="p">,</span> <span class="n">labeled_yeasts</span><span class="p">,</span> <span class="n">labeled_nuclei</span></div>
+
+
+<div class="viewcode-block" id="distance_spot_nuclei"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.distance_spot_nuclei">[docs]</a><span class="k">def</span> <span class="nf">distance_spot_nuclei</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">labeled_spots</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assign a class to every spot depending on its location according to the nucleus of the cell it is in.</span>
+<span class="sd">    It can be &#39;nuclear&#39;, &#39;cytoplasmic&#39; or &#39;peripheral&#39;.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        labeled_cells: The image containing labeled cells.</span>
+<span class="sd">        labeled_nuclei: The image containing labeled nuclei.</span>
+<span class="sd">        labeled_spots: The image containing labeled spots.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A dictionary giving for each spot label (int), its category (str).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">total_regions</span>  <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">labeled_spots</span><span class="p">)</span>
+    <span class="n">nuclei_regions</span> <span class="o">=</span> <span class="n">regionprops</span><span class="p">(</span><span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">intensity_image</span><span class="o">=</span><span class="n">labeled_spots</span><span class="p">)</span>
+    <span class="n">total_sizes</span>   <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Extracting total size of every spot.</span>
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">total_regions</span><span class="p">:</span>
+        <span class="n">vals</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">region</span><span class="o">.</span><span class="n">image_intensity</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">spot_label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+            <span class="n">total_sizes</span><span class="p">[</span><span class="n">spot_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
+    
+    <span class="n">nuclear_sizes</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">total_sizes</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+    <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="n">nuclei_regions</span><span class="p">:</span>
+        <span class="n">vals</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">region</span><span class="o">.</span><span class="n">image_intensity</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">spot_label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+            <span class="n">nuclear_sizes</span><span class="p">[</span><span class="n">spot_label</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
+    
+    <span class="n">classification</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="s1">&#39;UNDEFINED&#39;</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">total_sizes</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">total_count</span> <span class="ow">in</span> <span class="n">total_sizes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">ratio</span> <span class="o">=</span> <span class="n">nuclear_sizes</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_count</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">ratio</span> <span class="o">&gt;</span> <span class="mf">0.99</span><span class="p">):</span>
+            <span class="n">classification</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;NUCLEAR&#39;</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">ratio</span> <span class="o">&lt;=</span> <span class="mf">0.001</span><span class="p">):</span>
+            <span class="n">classification</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;CYTOPLASMIC&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">classification</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;PERIPHERAL&#39;</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="n">colored</span><span class="p">(</span><span class="s2">&quot;Spots classified.&quot;</span><span class="p">,</span> <span class="s1">&#39;green&#39;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">classification</span></div>
+
+<div class="viewcode-block" id="create_reference_to"><a class="viewcode-back" href="../../spots_in_yeasts.spotsInYeasts.html#spots_in_yeasts.spotsInYeasts.create_reference_to">[docs]</a><span class="k">def</span> <span class="nf">create_reference_to</span><span class="p">(</span><span class="n">labeled_cells</span><span class="p">,</span> <span class="n">labeled_spots</span><span class="p">,</span> <span class="n">spots_list</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">control_dir_path</span><span class="p">,</span> <span class="n">source_path</span><span class="p">,</span> <span class="n">projection_cells</span><span class="p">,</span> <span class="n">projection_spots</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">labeled_nuclei</span><span class="p">,</span> <span class="n">nuclei_fluo</span><span class="p">,</span> <span class="n">spots_colors</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a folder containing everything a user needs to see in order to check whether the process ended correctly and produced a correct segmentation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">present</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="c1"># Projection of brightfield</span>
+    <span class="n">imsave</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_bf.tif&quot;</span><span class="p">),</span>
+        <span class="n">projection_cells</span><span class="p">)</span>
+
+    <span class="c1"># Projection of spots fluo</span>
+    <span class="n">imsave</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_fluo_spots.tif&quot;</span><span class="p">),</span>
+        <span class="n">projection_spots</span><span class="p">)</span>
+
+    <span class="c1"># Projections of nuclei fluo</span>
+    <span class="k">if</span> <span class="n">nuclei_fluo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">imsave</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_fluo_nuclei.tif&quot;</span><span class="p">),</span>
+            <span class="n">nuclei_fluo</span><span class="p">)</span>
+
+    <span class="c1"># ----</span>
+
+    <span class="c1"># Cells indices</span>
+    <span class="n">imsave</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_indices.tif&quot;</span><span class="p">),</span>
+        <span class="n">indices</span><span class="p">)</span>
+
+    <span class="c1"># ----</span>
+    
+    <span class="c1"># Labeled cells</span>
+    <span class="n">imsave</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_segmented_cells.tif&quot;</span><span class="p">),</span>
+        <span class="n">labeled_cells</span><span class="p">)</span>
+
+    <span class="c1"># labeled spots</span>
+    <span class="n">imsave</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_segmented_spots.tif&quot;</span><span class="p">),</span>
+        <span class="n">labeled_spots</span><span class="p">)</span>
+
+    <span class="c1"># Labeled nuclei</span>
+    <span class="k">if</span> <span class="n">labeled_nuclei</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">imsave</span><span class="p">(</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_segmented_nuclei.tif&quot;</span><span class="p">),</span>
+            <span class="n">labeled_nuclei</span><span class="p">)</span>
+
+    <span class="c1"># Class of the spots</span>
+    <span class="k">if</span> <span class="n">spots_colors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;_spots_colors.txt&quot;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">textual</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spots_colors</span><span class="p">)</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">textual</span><span class="p">)</span>
+    
+    <span class="c1"># ----</span>
+
+    <span class="c1"># Create the CSV with spots list, save it along segmented spots</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="n">name</span><span class="o">+</span><span class="s2">&quot;.csv&quot;</span><span class="p">),</span>
+        <span class="n">spots_list</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">,</span>
+        <span class="n">header</span><span class="o">=</span><span class="s2">&quot;axis-0, axis-1&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Saving the index to read the folder</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">control_dir_path</span><span class="p">,</span> <span class="s2">&quot;index.txt&quot;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;name</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">name</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;sources</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">source_path</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;time</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">present</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2">/%B/%Y (%H:%M:%S)&quot;</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Clément H. Benedetti.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
