@@ -1,652 +1,661 @@
+from qtpy.QtWidgets import (QWidget, QVBoxLayout, QGroupBox, 
+                            QSpinBox, QHBoxLayout, QPushButton, 
+                            QFileDialog, QComboBox, QLabel, QTabWidget,
+                            QSlider, QSpinBox, QFrame, QLineEdit)
+
+from qtpy.QtCore import QThread, Qt
+
+from PyQt5.QtGui import QFont, QDoubleValidator
+from PyQt5.QtCore import pyqtSignal
+
 import napari
-from tifffile import imread
-from datetime import datetime
-import numpy as np
-from skimage.segmentation import clear_border
-from magicgui import magicgui, widgets
-from magicclass import magicclass
-from pathlib import Path
-from termcolor import colored
-import os, json, tempfile, time, subprocess, platform, sys
-from qtpy.QtWidgets import QToolBar, QWidget, QVBoxLayout
-from napari.qt.threading import thread_worker, create_worker
+from napari.utils.notifications import show_info
 from napari.utils import progress
-from spots_in_yeasts.spotsInYeasts import segment_transmission, segment_spots, distance_spot_nuclei, associate_spots_yeasts, create_reference_to, prepare_directory, write_labels_image, segment_nuclei
-from spots_in_yeasts.formatData import format_data_1844, format_data_1895
-from enum import Enum, auto
-from typing import Annotated, Literal
 
-_bf      = "brightfield"
-_f_spots = "fluo-spots"
-_lbl_c   = "labeled-cells"
-_lbl_s   = "labeled-spots"
-_spots   = "spots-positions"
-_n_cells = "cells-indices"
-_nuclei  = "fluo-nuclei"
-_lbl_n   = "labeled-nuclei"
+import tifffile
+import numpy as np
+import math
+import os
+import json
 
-_seg_ori = "raw-segmentation"
-_seg_nuc = "nuclei-refined"
-_seg_spt = "spots-refined"
+from spots_in_yeasts.image_layout_editor import ImageLayoutEditor
+from spots_in_yeasts.utils import get_config, set_config, find_focused_slice
+from spots_in_yeasts.siy_processor import SpotsInYeasts
+from spots_in_yeasts.qt_workers import QtSegmentCells
 
-class FormatsList(Enum):
-    format_1844 = auto()
-    format_1895 = auto()
+class SpotsInYeastsWidget(QWidget):
 
-def default_export():
-    return FormatsList.format_1844
+    patches_displayed = pyqtSignal()
+    export_done       = pyqtSignal()
+    labels_ready      = pyqtSignal()
 
-_global_settings = {
-    'gaussian_radius'    : 3.0,                    # Radius of the Gaussian filter applied to the spots layer before detection.
-    'neighbour_slices'   : 2,                      # Number of slices taken around the focus slice (in the case of a stack).
-    'peak_distance'      : 5,                      # Minimum distance required between two spots (to account for noise).
-    'area_threshold_up'  : 90,                     # Maximum area of a spot; anything beyond that will be considered as waste.
-    'extent_threshold'   : 0.6,                    # Minimal extent tolerated before discarding a spot.
-    'solidity_threshold' : 0.6,                    # Minimum solidity tolerated before discarding a spot.
-    'death_threshold'    : int(65535/2),           # Intensity threshold above which a cell is considered dead.
-    'cover_threshold'    : 0.75,                   # The percentage of a cell that must be covered by a nucleus for it to be considered dead.
-    'threshold_rel'      : 0.5,                    # Intensity shift required (relative to the max intensity in the image) to consider that a fluctuation is actually a spot.
-    'area_threshold_down': 15,
-    'export_mode'        : FormatsList.format_1844 # Format used to create the exported CSV file.
-}
-
-@magicclass
-class SpotsInYeastsDock:
-
-    def __init__(self, napari_viewer):
+    def __init__(self):
         super().__init__()
-        # Images currently associated with out process
-        self.images     = {}
-        # Array of coordinates representing detected spots
-        self.spots_data = None
-        # Array containing colors associated with spots (if we have nuclear marking)
-        self.spots_clr  = None
-        # Boolean representing whether we are running in batch mode
-        self.batch      = False
-        # Queue of files to be processed.
-        self.queue      = []
-        # Path of a directory in which measures will be exported, only in batch mode.
-        self.e_path     = tempfile.gettempdir()
-        # Absolute path of the file currently processed.
-        self.current    = None
-        # Path of the directory in which images will be processed, only in batch mode.
-        self.path       = None
-        # Current Viewer in Napari instance.
-        self.viewer     = napari_viewer
-        # Display name used for the current image
-        self.name       = ""
-        # CSV table containing results for the batch mode
-        self.csvtable   = None
-        # Export path, only for batch mode
-        self.csvexport  = ""
-        # Dictionary containing for each cell's label, the list of spots it owns
-        self.ownership  = {}
-        # Dictionary containing the different versions of segmented cells, as they refined along operations.
-        self.cells      = {_seg_ori: None, _seg_nuc: None, _seg_spt: None}
-        # Index of the last operation performed successfully.
-        self.last       = 0
 
-    def _clear_state(self):
-        self.viewer.layers.clear()
-        self.images     = {}
-        self.spots_data = None
-        self.spots_clr  = None
-        self.batch      = False
-        self.queue      = []
-        self.e_path     = tempfile.gettempdir()
-        self.current    = None
-        self.path       = None
-        self.name       = ""
-        self.csvtable   = None
-        self.csvexport  = ""
-        self.ownership  = {}
-        self.cells      = {_seg_ori: None, _seg_nuc: None, _seg_spt: None}
-        self.last       = 0
-    
-    def _clear_data(self):
-        self.viewer.layers.clear()
-        self.images     = {}
-        self.spots_data = None
-        self.spots_clr  = None
-        self.current    = None
-        self.name       = ""
-        self.ownership  = {}
-        self.cells      = {_seg_ori: None, _seg_nuc: None, _seg_spt: None}
-        self.last       = 0
+        self.viewer        = napari.current_viewer()
+        self.processor     = None # Contains operations
+        self.ile           = None # Image Layout Editor
+        self.channels_lt   = None # Dict of channels layout
+        self.worker        = None
+        self.active_worker = False
+
+        self.layout = QVBoxLayout()
+        self.init_ui()
+        self.setLayout(self.layout)
+
+        self.retrieve()
+        self.clear_layers()
+
+    # # # # # # # # # # # # #  UI  # # # # # # # # # # # # #
+
+    def init_ui(self):
+        self.font = QFont()
+        self.font.setFamily("Arial Unicode MS, Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji")
+        self.channels_layout_ui()
+        self.stack_settings_ui()
+        self.yeasts_ui()
+        self.nuclei_ui()
+        self.spots_ui()
+        self.toolbox_ui()
+
+    def channels_layout_ui(self):
+        self.channelsGroup = QGroupBox("•  Channels layout")
+        self.channelsLayout = QVBoxLayout()
+
+        # Clear state
+        self.clearLayersButton = QPushButton("❌ Clear layers")
+        self.clearLayersButton.setFont(self.font)
+        self.clearLayersButton.clicked.connect(self.clear_layers)
+        self.channelsLayout.addWidget(self.clearLayersButton)
+
+        # Vertical padding (white space)
+        self.channelsLayout.addSpacing(20)
         
-    def _is_batch(self):
-        return self.batch
+        # Select directory button
+        self.workingDirButton = QPushButton("📂 Working directory")
+        self.workingDirButton.setFont(self.font)
+        self.workingDirButton.clicked.connect(self.select_working_dir)
+        self.channelsLayout.addWidget(self.workingDirButton)
+
+        # Edit channels layout button
+        self.editLayoutButton = QPushButton("♻️ Edit channels layout")
+        self.editLayoutButton.setFont(self.font)
+        self.editLayoutButton.clicked.connect(self.launch_layout_editor)
+        self.channelsLayout.addWidget(self.editLayoutButton)
+
+        # Set channels layout combobox
+        self.layoutComboBox = QComboBox()
+        self.layoutComboBox.addItem("---")
+        self.layoutComboBox.currentIndexChanged.connect(self.update_layout)
+        self.channelsLayout.addWidget(self.layoutComboBox)
+
+        # Name of the current channels layout
+        self.selectedLayout = QLabel("---", self)
+        self.selectedLayout.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.selectedLayout.setAlignment(Qt.AlignCenter)
+        self.selectedLayout.setStyleSheet("QLabel { font-weight: bold; }")
+        self.channelsLayout.addWidget(self.selectedLayout)
+
+        # Apply layout button
+        self.applyLayoutButton = QPushButton("🔧 Split channels")
+        self.applyLayoutButton.setFont(self.font)
+        self.applyLayoutButton.clicked.connect(self.apply_layout)
+        self.channelsLayout.addWidget(self.applyLayoutButton)
+
+        self.channelsGroup.setLayout(self.channelsLayout)
+        self.layout.addWidget(self.channelsGroup)
     
-    def _set_batch(self, val):
-        print(f"Batch mode: {('ON' if val else 'OFF')}")
-        self.batch = val
+    def stack_settings_ui(self):
+        self.stackGroup = QGroupBox("•  Stack settings")
+        self.stackLayout = QVBoxLayout()
 
-    def _set_ownership(self, ownership):
-        self.ownership = ownership
+        # Slices around focus spinbox
+        around_focus_layout = QHBoxLayout()
+        around_focus_label = QLabel("Slices around focus:")
+        self.slicesAroundFocus = QSpinBox()
+        self.slicesAroundFocus.setRange(0, 10)
+        self.slicesAroundFocus.setValue(2)
+        around_focus_layout.addWidget(around_focus_label)
+        around_focus_layout.addWidget(self.slicesAroundFocus)
+        self.stackLayout.addLayout(around_focus_layout)
 
-    def _get_ownership(self):
-        return self.ownership
+        # Create MIP button
+        self.createMIPButton = QPushButton("📥 Create MIP")
+        self.createMIPButton.setFont(self.font)
+        self.createMIPButton.clicked.connect(self.mip_flatten)
+        self.stackLayout.addWidget(self.createMIPButton)
 
-    def _set_spots(self, spots, colors=None):
-        self.spots_data = spots
-        self.spots_clr  = colors
+        self.stackGroup.setLayout(self.stackLayout)
+        self.layout.addWidget(self.stackGroup)
 
-        if self.batch:
+    def yeasts_ui(self):
+        self.yeastsGroup = QGroupBox("•  Segment yeasts")
+        self.yeastsLayout = QVBoxLayout()
+
+        # Median cell diameter input
+        median_diameter_layout = QHBoxLayout()
+        median_diameter_label = QLabel("Cells ⌀ (pxl):")
+        self.medianDiameter = QSpinBox()
+        self.medianDiameter.setRange(20, 100)
+        self.medianDiameter.setValue(35)
+        median_diameter_layout.addWidget(median_diameter_label)
+        median_diameter_layout.addWidget(self.medianDiameter)
+        self.yeastsLayout.addLayout(median_diameter_layout)
+
+        # Launch segmentation button
+        self.segmentCellsButton = QPushButton("📍 Segment cells")
+        self.segmentCellsButton.setFont(self.font)
+        self.segmentCellsButton.clicked.connect(self.segment_cells)
+        self.yeastsLayout.addWidget(self.segmentCellsButton)
+
+        self.yeastsGroup.setLayout(self.yeastsLayout)
+        self.layout.addWidget(self.yeastsGroup)
+
+    def nuclei_ui(self):
+        self.nucleiGroup = QGroupBox("•  Segment nuclei")
+        self.nucleiLayout = QVBoxLayout()
+
+        # Vertical padding (white space)
+        self.nucleiLayout.addSpacing(10)
+
+        # Percentage of nuclei in yeasts for death (slider)
+        death_percentage_layout = QHBoxLayout()
+        death_ratio_label = QLabel("Max N/C ratio:")
+        self.deathPercentage = QSlider(Qt.Horizontal)
+        self.deathPercentage.setRange(0, 100)
+        self.deathPercentage.setValue(50)
+        self.deathPercentageLabel = QLabel(f"{self.deathPercentage.value()}%")
+        self.deathPercentage.valueChanged.connect(self.update_death_percentage)
+        death_percentage_layout.addWidget(death_ratio_label)
+        death_percentage_layout.addWidget(self.deathPercentage)
+        death_percentage_layout.addWidget(self.deathPercentageLabel)
+        self.nucleiLayout.addLayout(death_percentage_layout)
+
+        # Vertical padding (white space)
+        self.nucleiLayout.addSpacing(10)
+
+        # Launch nuclei segmentation button
+        self.segmentNucleiButton = QPushButton("📍 Segment nuclei")
+        self.segmentNucleiButton.setFont(self.font)
+        self.segmentNucleiButton.clicked.connect(self.segment_nuclei)
+        self.nucleiLayout.addWidget(self.segmentNucleiButton)
+
+        # Button to launch the Hopcroft-Karp algorithm
+        self.hopcroftButton = QPushButton("🔗 Hopcroft-Karp")
+        self.hopcroftButton.setFont(self.font)
+        self.hopcroftButton.clicked.connect(self.hk_pairing)
+        self.nucleiLayout.addWidget(self.hopcroftButton)
+
+        self.nucleiGroup.setLayout(self.nucleiLayout)
+        self.layout.addWidget(self.nucleiGroup)
+    
+    def add_spots_tab_ui(self, name):
+        if name == "":
+            show_info("Please provide a name for the channel.")
             return
+        tab = QWidget()
+        self.spotsSettings.addTab(tab, name)
 
-        if _spots in self._current_viewer().layers:
-            self._current_viewer().layers[_spots].data = spots
-        else:
-            self._current_viewer().add_points(self.spots_data, name=_spots)
-        
-        if colors:
-            self._current_viewer().layers[_spots].face_color = '#00000000'
-            self._current_viewer().layers[_spots].edge_color = colors
-            self._current_viewer().layers[_spots].refresh()
+        tab_layout = QVBoxLayout()
+        tab.setLayout(tab_layout)
 
-    def _get_spots(self):
-        return self.spots_data
+        # Reset input text field
+        self.channel_name.setText("")
 
-    def _set_image(self, key, data, args={}, aslabels=False, ctr=0):
-        self.images[key] = data
+        # Minimal distance between spots
+        min_distance_layout = QHBoxLayout()
+        min_distance_label = QLabel("Min spots distance (pxl):")
+        min_distance = QSpinBox()
+        min_distance.setRange(1, 100)
+        min_distance.setValue(4)
+        min_distance_layout.addWidget(min_distance_label)
+        min_distance_layout.addWidget(min_distance)
+        tab_layout.addLayout(min_distance_layout)
+
+        # Input for the LoG radius
+        log_filter_layout = QHBoxLayout()
+        log_filter_label = QLabel("LoG radius (pxl):")
+        log_filter_radius = QSlider(Qt.Horizontal)
+        log_filter_radius.setRange(1, 50)
+        log_filter_radius.setValue(2)
+        log_filter_value = QLabel(f"{log_filter_radius.value()/10}")
+        log_filter_radius.valueChanged.connect(lambda: log_filter_value.setText(f"{log_filter_radius.value()/10}"))
+        log_filter_value.setFixedHeight(20)
+        log_filter_layout.addWidget(log_filter_label)
+        log_filter_layout.addWidget(log_filter_radius)
+        log_filter_layout.addWidget(log_filter_value)
+        tab_layout.addLayout(log_filter_layout)
+
+        # Minimal spots area
+        min_area_layout = QHBoxLayout()
+        min_area_label = QLabel("Min spots area (pxl²):")
+        min_area = QSpinBox()
+        min_area.setRange(1, 100)
+        min_area_layout.addWidget(min_area_label)
+        min_area_layout.addWidget(min_area)
+        tab_layout.addLayout(min_area_layout)
+
+        # Maximal spots area
+        max_area_layout = QHBoxLayout()
+        max_area_label = QLabel("Max spots area (pxl²):")
+        max_area = QSpinBox()
+        max_area.setRange(1, 100)
+        max_area_layout.addWidget(max_area_label)
+        max_area_layout.addWidget(max_area)
+        tab_layout.addLayout(max_area_layout)
+
+        # Intensity threshold
+        intensity_threshold_layout = QHBoxLayout()
+        intensity_threshold_label = QLabel("Intensity threshold (%):")
+        intensity_threshold = QSlider(Qt.Horizontal)
+        intensity_threshold.setRange(1, 100)
+        intensity_threshold.setValue(20)
+        intensity_threshold_value = QLabel(f"{intensity_threshold.value()}%")
+        intensity_threshold.valueChanged.connect(lambda: intensity_threshold_value.setText(f"{intensity_threshold.value()}%"))
+        intensity_threshold_value.setFixedHeight(20)
+        intensity_threshold_layout.addWidget(intensity_threshold_label)
+        intensity_threshold_layout.addWidget(intensity_threshold)
+        intensity_threshold_layout.addWidget(intensity_threshold_value)
+        tab_layout.addLayout(intensity_threshold_layout)
+
+        # Segment spots button
+        segment_spots = QPushButton("💡 Find spots")
+        segment_spots.setFont(self.font)
+        segment_spots.clicked.connect(lambda: self.segment_spots(name))
+
+        # Save configuration button
+        save_configuration = QPushButton("💾 Save settings")
+        save_configuration.setFont(self.font)
+        save_configuration.clicked.connect(lambda: self.save_configuration(name))
         
-        if self._is_batch():
-            return 
-        
-        if key in self._current_viewer().layers:
-            self._current_viewer().layers[key].data = data
-        else:
-            if aslabels:
-                self._current_viewer().add_labels(
-                    data,
-                    name=key,
-                    **args)
+        # Layout button
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addWidget(segment_spots)
+        buttons_layout.addWidget(save_configuration)
+        tab_layout.addLayout(buttons_layout)
+
+        widgets = {
+            'name'               : name,
+            'log_radius'         : log_filter_radius,
+            'min_distance'       : min_distance,
+            'min_area'           : min_area,
+            'max_area'           : max_area,
+            'intensity_threshold': intensity_threshold,
+            'segment_spots'      : segment_spots,
+            'save_configuration' : save_configuration
+        }
+        self.spots_tabs_widgets.append(widgets)
+    
+    def add_settings_tab_ui(self):
+        # Adds all the settings in a new tab in 'self.spotsSettings'
+        tab = QWidget()
+        self.spotsSettings.addTab(tab, "   ⚙️   ")
+
+        tab_layout = QVBoxLayout()
+        tab.setLayout(tab_layout)
+
+        # Name of the channel
+        channel_name_layout = QHBoxLayout()
+        channel_name_label = QLabel("Name:")
+        self.channel_name = QLineEdit()
+        channel_name_layout.addWidget(channel_name_label)
+        channel_name_layout.addWidget(self.channel_name)
+        tab_layout.addLayout(channel_name_layout)
+
+        # Add config button
+        add_config = QPushButton("☑️ Create config")
+        add_config.setFont(self.font)
+        add_config.clicked.connect(lambda: self.add_spots_tab_ui(self.channel_name.text().strip()))
+        tab_layout.addWidget(add_config)
+
+        # Separator
+        separator = QLabel("───────")
+        separator.setAlignment(Qt.AlignCenter)
+        separator.setStyleSheet("QLabel { color: #aaaaaa; }")
+        separator.setFixedHeight(20)
+        tab_layout.addWidget(separator)
+
+        # Clear loaded configs button
+        clear_configs = QPushButton("❌ Clear loaded configs")
+        clear_configs.setFont(self.font)
+        clear_configs.clicked.connect(self.reset_all_tabs_ui)
+        tab_layout.addWidget(clear_configs)
+
+        # Load config label + combobox
+        load_config_layout = QHBoxLayout()
+        load_config_label = QLabel("Load config:")
+        self.load_config = QComboBox()
+        self.load_config.addItem("---")
+        load_config_layout.addWidget(load_config_label)
+        load_config_layout.addWidget(self.load_config)
+        tab_layout.addLayout(load_config_layout)
+
+        self.settings_widgets = {
+            'add_config'    : add_config,
+            'clear_configs' : clear_configs,
+            'load_config'   : self.load_config,
+            'channel_name'  : self.channel_name
+        }
+        self.spots_tabs_widgets = []
+
+    def reset_all_tabs_ui(self):
+        self.spotsSettings.clear()
+        self.spots_tabs_widgets = []
+        self.add_settings_tab_ui()
+
+    def spots_ui(self):
+        self.spotsGroup = QGroupBox("•  Segment spots")
+        self.spotsLayout = QVBoxLayout()
+        self.spots_tabs_widgets = []
+
+        # A tab of settings for each spots channel (one at init)
+        self.spotsSettings = QTabWidget()
+        self.spotsLayout.addWidget(self.spotsSettings)
+        self.add_settings_tab_ui()
+        tab_bar = self.spotsSettings.tabBar()
+        tab_bar.setStyleSheet("""
+            QTabBar::tab:first {
+                background: lightcoral;
+            }
+            QTabBar::tab:first:selected {
+                background: coral;
+            }
+        """)
+        self.spotsSettings.update()
+
+        # Segment all spots button
+        self.segmentAllSpotsButton = QPushButton("📍 Segment all spots")
+        self.segmentAllSpotsButton.setFont(self.font)
+        self.segmentAllSpotsButton.clicked.connect(self.segment_all_spots)
+        self.spotsLayout.addWidget(self.segmentAllSpotsButton)
+
+        self.spotsGroup.setLayout(self.spotsLayout)
+        self.layout.addWidget(self.spotsGroup)
+
+    def toolbox_ui(self):
+        self.toolboxGroup = QGroupBox("•  Toolbox")
+        self.toolboxLayout = QVBoxLayout()
+
+        # Deletion mode button
+        self.deletionModeButton = QPushButton("🗑️ Deletion mode")
+        self.deletionModeButton.setFont(self.font)
+        self.deletionModeButton.setCheckable(True)
+        self.deletionModeButton.clicked.connect(self.deletion_mode)
+        self.toolboxLayout.addWidget(self.deletionModeButton)
+
+        # Fusion mode button
+        self.fusionModeButton = QPushButton("🔗 Fusion mode")
+        self.fusionModeButton.setFont(self.font)
+        self.fusionModeButton.setCheckable(True)
+        self.fusionModeButton.clicked.connect(self.fusion_mode)
+        self.toolboxLayout.addWidget(self.fusionModeButton)
+
+        # Export measures button
+        self.exportMeasuresButton = QPushButton("💾 Export measures")
+        self.exportMeasuresButton.setFont(self.font)
+        self.exportMeasuresButton.clicked.connect(self.export_measures)
+        self.toolboxLayout.addWidget(self.exportMeasuresButton)
+
+        self.toolboxGroup.setLayout(self.toolboxLayout)
+        self.layout.addWidget(self.toolboxGroup)
+    
+    # # # # # # # # # # # # #  CALLBACKS  # # # # # # # # # # # # #
+
+    def clear_layers(self):
+        self.viewer.layers.clear()
+        self.processor = SpotsInYeasts()
+
+    def select_working_dir(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select a working directory")
+        if not folder:
+            return
+        self.set_working_directory(folder)
+
+    def launch_layout_editor(self):
+        self.ile = ImageLayoutEditor()
+        self.ile.destroyed.connect(self.update_layouts_list)
+        self.ile.show()
+    
+    def update_layouts_list(self):
+        config = get_config()
+        working_dir = config.get('working_directory', None)
+        layouts_dir = os.path.join(working_dir, "layouts")
+        if not working_dir or not os.path.isdir(layouts_dir):
+            return
+        layouts = sorted([f.replace('.json', '') for f in os.listdir(layouts_dir) if f.endswith('.json')])
+        self.layoutComboBox.clear()
+        self.layoutComboBox.addItems(["---"] + layouts)
+
+    def update_layout(self):
+        tgt_layout = self.layoutComboBox.currentText()
+        if tgt_layout == "---":
+            return
+        self.selectedLayout.setText(tgt_layout)
+        self.set_current_layout(tgt_layout)
+
+    # 2D: C, Y, X
+    # 3D: Z, C, Y, X
+    def apply_layout(self):
+        if self.channels_lt is None:
+            return
+        layer = self.viewer.layers.selection.active
+        if layer is None:
+            return
+        img = layer.data
+        if len(img.shape) == 3:
+            self.split_2d_channels(img)
+        elif len(img.shape) == 4:
+            self.split_3d_channels(img)
+        self.viewer.layers.remove(layer)
+    
+    def split_2d_channels(self, img):
+        for i, channel in enumerate(self.channels_lt):
+            if channel['type'] == '---':
+                continue
+            data = img[i, :, :].copy()
+            target = channel['name'] + '.' + channel['type']
+            if target in self.viewer.layers:
+                self.viewer.layers[target].data = data
             else:
-                self._current_viewer().add_image(
-                    data,
-                    name=key,
-                    **args)
-        if aslabels:
-            self._current_viewer().layers[key].contour = ctr
+                self.viewer.add_image(data, name=target, colormap=channel['color'])
+
+    def split_3d_channels(self, img):
+        for i, channel in enumerate(self.channels_lt):
+            if channel['type'] == '---':
+                continue
+            data = img[:, i, :, :].copy()
+            target = channel['name'] + '.' + channel['type']
+            if target in self.viewer.layers:
+                self.viewer.layers[target].data = data
+            else:
+                self.viewer.add_image(data, name=target, colormap=channel['color'])
+
+    def segment_cells(self):
+        self.processor.set_cells_diameter(self.medianDiameter.value())
+        data, target = self.get_first_of('Brightfield')
+        self.processor.set_brightfield(data, target)
+        self.pbr = progress()
+        self.pbr.set_description("Segmenting cells...")
+        self.set_active_ui(False)
+        self.thread = QThread()
+
+        self.worker = QtSegmentCells(self.pbr, self.processor)
+        self.worker.update.connect(self.update_pbr)
+        self.active_worker = True
+
+        self.worker.moveToThread(self.thread)
+        self.worker.finished.connect(self.acquire_cells_segmentation)
+        self.thread.started.connect(self.worker.run)
+        
+        self.thread.start()
     
-    def _get_image(self, key):
-        return self.images.get(key)
+    def acquire_cells_segmentation(self):
+        self.end_worker()
+        labeled_cells = self.processor.labeled_cells
+        layer_name = self.processor.cells_target + "-labeled"
+        layer = None
+        if layer_name in self.viewer.layers:
+            layer = self.viewer.layers[layer_name]
+            layer.data = labeled_cells
+        else:
+            layer = self.viewer.add_labels(labeled_cells, name=layer_name)
+        layer.contour = 4
+        show_info(f"Found {np.max(labeled_cells)} cells.")
 
-    def _required_key(self, key):
-        return key in self.images
+    def get_first_of(self, name):
+        for layer in self.viewer.layers:
+            _, t = layer.name.split('.')
+            if t == name:
+                return layer.data, layer.name
+        return None, None
 
-    def _get_export_path(self):
-        return os.path.join(self.e_path, self._get_current_name()+".ysc")
+    def update_death_percentage(self, value):
+        self.deathPercentageLabel.setText(f"{value}%")
 
-    def _set_export_path(self, path):
-        d_path = str(path)
-        if not os.path.isdir(d_path):
-            print(colored(f"{d_path}", 'red', attrs=['underline']), end="")
-            print(colored(" is not a directory path.", 'red'))
-            d_path = tempfile.gettempdir()
-        print("Export directory set to: ", end="")
-        print(colored(d_path, attrs=['underline']))
-        self.e_path = d_path
+    def segment_nuclei(self):
+        pass
 
-    def _set_current_name(self, n):
-        self.name = n
+    def hk_pairing(self):
+        pass
+
+    def segment_spots(self, name):
+        pass
+
+    def save_configuration(self, name):
+        pass
+
+    def segment_all_spots(self):
+        pass
+
+    def deletion_mode(self, value):
+        font_weight = "bold" if value else "normal"
+        self.deletionModeButton.setStyleSheet(f"QPushButton {{ font-weight: {font_weight}; }}")
+
+    def fusion_mode(self, value):
+        font_weight = "bold" if value else "normal"
+        self.fusionModeButton.setStyleSheet(f"QPushButton {{ font-weight: {font_weight}; }}")
+
+    def export_measures(self):
+        pass
+
+    def set_working_directory(self, folder):
+        if not os.path.isdir(folder):
+            show_info("The selected directory does not exist.")
+            return
+        config = get_config()
+        config['working_directory'] = folder
+        set_config(config)
+        self.update_layouts_list()
+        self.load_spots_configs()
     
-    def _get_current_name(self):
-        return self.name
+    def end_worker(self):
+        if self.active_worker:
+            self.active_worker = False
+            self.pbr.close()
+            self.thread.quit()
+            self.thread.wait()
+            self.thread.deleteLater()
+            self.set_active_ui(True)
+            self.total = -1
     
-    def _current_image(self):
-        return self.current
+    def update_pbr(self, text, current, total):
+        self.pbr.set_description(text)
+        if (total != self.total):
+            self.pbr.reset(total=total)
+            self.total = total
+        self.pbr.update(current)
 
-    def _reset_current(self):
-        self.current = None
-        self._set_current_name("")
-
-    def _next_item(self):
-        self.current = None
-
-        if self.path is None:
-            return False
-
-        if len(self.queue) == 0:
-            return False
-        
-        while len(self.queue) > 0:
-            item = self.queue.pop(0)
-            if os.path.isfile(item):
-                self.current = item
-                self._set_current_name(item.split(os.sep)[-1].split('.')[0])
-                prepare_directory(self._get_export_path())
-                return True
-        
-        return False
-
-    # Loads the image stored in "self.current" in Napari.
-    # A safety check ensures that several images can't be loaded simulteanously
-    def _load(self):
-        hyperstack = np.array(imread(str(self.current)))
-
-        if hyperstack is None:
-            print(colored(f"Failed to open: `{str(self.current)}`.", 'red'))
-            return False
-
-        self._set_image(self._get_current_name(), hyperstack)
-        print(colored(f"\n===== Currently working on: {self._get_current_name()} =====", 'green', attrs=['bold']))
-
-        return True
-
-    def _current_viewer(self):
-        return self.viewer
-
-    def _set_path(self, path):
-        self.path    = str(path)
-        self._init_queue_()
-
-    def _init_queue_(self):
-        if os.path.isdir(self.path):
-            self.queue = [os.path.join(self.path, i) for i in os.listdir(self.path) if i.lower().endswith('.tif')]
-        
-        if os.path.isfile(self.path):
-            self.queue = [self.path] if self.path.lower().endswith('.tif') else []
-
-        print(f"{len(self.queue)} files found.")
-
-
-    @magicgui(
-        call_button         = "Apply settings",
-        death_threshold     = {'max': 65535, 'label': "Death threshold"},
-        cover_threshold     = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "N/C cover threshold (%)"},
-        threshold_rel       = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Intensity threshold (%)"},
-        solidity_threshold  = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Solidity threshold"},
-        extent_threshold    = {'widget_type': "FloatSlider", 'min': 0.0, 'max': 1.0, 'label': "Extent threshold"},
-        gaussian_radius     = {'label': "LoG radius (pxl)", 'min': 1, 'max': 10},
-        area_threshold_down = {'label': "Spot area min (pxl)"},
-        area_threshold_up   = {'label': "Spot area max (pxl)"},
-        export_mode         = {'label': "Export format"},
-        neighbour_slices    = {'label': "Slices around focus", 'min': 0},
-        peak_distance       = {'label': "Min spots distance (pxl)", 'min': 0})
-    def apply_settings_gui(
-        self, 
-        neighbour_slices: int=_global_settings['neighbour_slices'],
-
-        cover_threshold : float=_global_settings['cover_threshold'],
-
-        gaussian_radius    : int=_global_settings['gaussian_radius'], 
-        death_threshold    : int=_global_settings['death_threshold'], 
-        peak_distance      : int=_global_settings['peak_distance'], 
-        area_threshold_down: int=_global_settings['area_threshold_down'],
-        area_threshold_up  : int=_global_settings['area_threshold_up'], 
-        extent_threshold   : float=_global_settings['extent_threshold'], 
-        solidity_threshold : float=_global_settings['solidity_threshold'], 
-        threshold_rel      : float=_global_settings['threshold_rel'],
-        export_mode        : FormatsList=default_export()):
-        
-        global _global_settings
-
-        _global_settings['gaussian_radius']     = gaussian_radius
-        _global_settings['neighbour_slices']    = neighbour_slices
-        _global_settings['peak_distance']       = peak_distance
-        _global_settings['area_threshold_up']   = area_threshold_up
-        _global_settings['extent_threshold']    = extent_threshold
-        _global_settings['solidity_threshold']  = solidity_threshold
-        _global_settings['export_mode']         = export_mode
-        _global_settings['death_threshold']     = death_threshold
-        _global_settings['cover_threshold']     = cover_threshold
-        _global_settings['threshold_rel']       = threshold_rel
-        _global_settings['area_threshold_down'] = area_threshold_down
-
-    @magicgui(call_button="Clear layers")
-    def clear_layers_gui(self):
-        """
-        Removes all the layers currently present in the Napari's viewer, and resets the state machine used by the scipt.
-        """
-        self._clear_state()
-        self.last = 0
-        return True
-
-
-    @magicgui(call_button="Split channels")
-    def split_channels_gui(self):
-        
-        nImages = len(self._current_viewer().layers) # We want a unique layer to work with.
-
-        if self._is_batch():
-            if nImages != 0:
-                print(colored(f"Viewer should be left empty for batch mode. (found {nImages})", 'red'))
-                return False
-        else:
-            if nImages != 1:
-                print(colored(f"Excatly one image must be loaded at a time. (found {nImages})", 'red'))
-                return False
-
-        imIn = self._get_image(self._get_current_name()) if self._is_batch() else self._current_viewer().layers[0].data
-        imSp = imIn.shape
-
-        # (2, 2048, 2048) -> channels, height, width
-        # (9, 2, 2048, 2048) -> slices, channels, height, width
-        if len(imSp) not in [3, 4]:
-            print(colored(f"Images must have 3 or 4 dimensions. {len(imSp)} found.", 'red'))
-            return False
-
-        axis      = 0 if (len(imSp) == 3) else 1 # If we have slices or not
-        nChannels = imSp[axis]
-
-        if nChannels not in {2, 3}:
-            print(colored(f"Either 2 or 3 channels are expected. {nChannels} found.", 'red'))
-            return False
-        
-        if not self._is_batch():
-            self._set_current_name(self._current_viewer().layers[0].name)
-            self._current_viewer().layers.clear()
-
-        if nChannels == 2:
-            s, t = np.split(imIn, indices_or_sections=2, axis=axis)
-            n = None
-        else:
-            s, t, n = np.split(imIn, indices_or_sections=3, axis=axis)
-        
-        if n is not None:
-            self._set_image(_nuclei, np.squeeze(n), {
-                'rgb'      : False,
-                'colormap' : 'cyan',
-                'blending' : 'opaque'
-            })
-
-        self._set_image(_f_spots, np.squeeze(s), {
-            'rgb'      : False,
-            'colormap' : 'yellow',
-            'blending' : 'opaque'
-        })
-
-        self._set_image(_bf, np.squeeze(t), {
-            'rgb'      : False,
-            'blending' : 'opaque'
-        })
-
-        self.last = 1
-        return True
-
-
-    @magicgui(call_button="Segment cells")
-    def segment_brightfield_gui(self):
-        
-        if self.last not in {1, 2}:
-            print(colored("You should split your channels first.", 'red'))
-            return False
-
-        if not self._required_key(_bf):
-            print(colored(_bf, 'red', attrs=['underline']), end="")
-            print(colored(" channel not found.", 'red'))
-            return False
-
-        start = time.time()
-        labeled, projection = segment_transmission(self._get_image(_bf), True, _global_settings['neighbour_slices'])
-        indices = write_labels_image(labeled, 0.75)
-        
-        self._set_image(_bf, projection) # Replacing stack by projection.
-        
-        self._set_image(_lbl_c, labeled, {
-            'blending': "additive"
-        },
-        True,
-        4)
-
-        self.cells[_seg_ori] = labeled # Image with every single cell that could possibly be detected.
-
-        self._set_image(_n_cells, indices, {
-            'visible': False,
-            'blending': "additive"
-        })
-        
-        print(colored(f"Segmented cells from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
-        self.last = 2
-        return True
+    def set_active_ui(self, status):
+        self.clearLayersButton.setEnabled(status)
+        self.workingDirButton.setEnabled(status)
+        self.editLayoutButton.setEnabled(status)
+        self.layoutComboBox.setEnabled(status)
+        self.applyLayoutButton.setEnabled(status)
+        self.slicesAroundFocus.setEnabled(status)
+        self.createMIPButton.setEnabled(status)
+        self.medianDiameter.setEnabled(status)
+        self.segmentCellsButton.setEnabled(status)
+        self.deathPercentage.setEnabled(status)
+        self.segmentNucleiButton.setEnabled(status)
+        self.hopcroftButton.setEnabled(status)
+        self.segmentAllSpotsButton.setEnabled(status)
+        self.deletionModeButton.setEnabled(status)
+        self.fusionModeButton.setEnabled(status)
+        self.exportMeasuresButton.setEnabled(status)
+        for k, v in self.settings_widgets.items():
+            if isinstance(v, QPushButton):
+                v.setEnabled(status)
+            elif isinstance(v, QComboBox):
+                v.setEnabled(status)
+            elif isinstance(v, QLineEdit):
+                v.setEnabled(status)
+        for tab in self.spots_tabs_widgets:
+            for k, v in tab.items():
+                if isinstance(v, QPushButton):
+                    v.setEnabled(status)
+                elif isinstance(v, QSlider):
+                    v.setEnabled(status)
+                elif isinstance(v, QSpinBox):
+                    v.setEnabled(status)
+                elif isinstance(v, QLineEdit):
+                    v.setEnabled(status)
+        for tab in range(self.spotsSettings.count()):
+            self.spotsSettings.setTabEnabled(tab, status)
     
+    # # # # # # # # # # # # #  METHODS  # # # # # # # # # # # # #
 
-    @magicgui(call_button="Segment nuclei")
-    def segment_nuclei_gui(self):
+    def retrieve(self):
+        self.update_layouts_list()
+        self.load_last_layout()
+    
+    def load_last_layout(self):
+        config = get_config()
+        last_layout = config.get('last_layout', None)
+        working_dir = config.get('working_directory', None)
+        if last_layout is None or working_dir is None:
+            return
+        self.set_current_layout(last_layout)
+    
+    def set_current_layout(self, name):
+        config = get_config()
+        working_dir = config.get('working_directory', None)
+        if working_dir is None:
+            return
+        path = os.path.join(working_dir, "layouts", f"{name}.json")
+        if not os.path.isfile(path):
+            return
+        self.layoutComboBox.setCurrentText(name)
+        config['last_layout'] = name
+        set_config(config)
+        with open(path, 'r') as f:
+            self.channels_lt = json.load(f)
 
-        if self.last not in {2, 3}:
-            print(colored("The previous operation realized should be the cells segmentation.", 'red'))
-            return False
+    def load_spots_configs(self):
+        pass
 
-        if not self._required_key(_lbl_c):
-            print(colored(_lbl_c, 'red', attrs=['underline']), end="")
-            print(colored(" channel not found.", 'red'))
-            return False
-        
-        if not self._required_key(_nuclei):
-            print(colored(_nuclei, 'red', attrs=['underline']), end="")
-            print(colored(" channel not found.", 'red'))
-            return False
-
-        start = time.time()
-        
-        # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-
-        flattened_nuclei, labeled_yeasts, labeled_nuclei = segment_nuclei(
-            self.cells[_seg_ori], 
-            self._get_image(_nuclei), 
-            _global_settings['cover_threshold']
-        )
-
-        # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-        
-        self._set_image(_nuclei, flattened_nuclei)
-
-        self.cells[_seg_nuc] = labeled_yeasts
-
-        self._set_image(_lbl_c, labeled_yeasts, {
-            'blending': "additive"
-        },
-        True,
-        4)
-
-        self._set_image(_lbl_n, labeled_nuclei, {
-            'blending': "additive"
-        },
-        True)
-
-        print(colored(f"Segmented nuclei from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
-        self.last = 3
-        return True
+    def mip_flatten(self):
+        for layer in self.viewer.layers:
+            img = layer.data
+            if len(img.shape) != 3:
+                continue
+            _, t = layer.name.split('.')
+            r = find_focused_slice(img, 0 if t == 'Brightfield' else int(self.slicesAroundFocus.value()))
+            mip = np.max(img[r[0]:r[1]], axis=0)
+            layer.data = mip
 
 
-    @magicgui(call_button="Segment spots")
-    def segment_spots_gui(self):
 
-        if self.last not in {2, 3, 4}:
-            print(colored("The previous operation realized should be the cells or nuclei segmentation.", 'red'))
-            return False
-        
-        if not self._required_key(_lbl_c):
-            print(colored(_lbl_c, 'red', attrs=['underline']), end="")
-            print(colored(" channel not found.", 'red'))
-            return False
-
-        if not self._required_key(_f_spots):
-            print(colored(_f_spots, 'red', attrs=['underline']), end="")
-            print(colored(" channel not found.", 'red'))
-            return False
-
-        start = time.time()
-        
-        labeled_cells = self.cells[_seg_ori] if (self.cells[_seg_nuc] is None) else self.cells[_seg_nuc]
-        labeled_cells = clear_border(labeled_cells)
-
-        spots_locations, labeled_spots, f_spots = segment_spots(
-            self._get_image(_f_spots), 
-            labeled_cells,
-            _global_settings['death_threshold'],
-            _global_settings['gaussian_radius'], 
-            _global_settings['peak_distance'],
-            _global_settings['threshold_rel']
-            )
-        
-        self._set_image(_lbl_c, labeled_cells, {
-            'blending': "additive"
-        },
-        True,
-        4)
-        
-        self._set_image(_f_spots, f_spots)
-
-        if self._required_key(_lbl_n): # If we have nuclei, we can classify spots.
-            categories = distance_spot_nuclei(labeled_cells, self._get_image(_lbl_n), labeled_spots)
-        else:
-            categories = None
-
-        # `ow` gives for each cell a list of spots properties.
-        ow, spots_locations, labeled_spots = associate_spots_yeasts(labeled_cells, labeled_spots, f_spots, _global_settings['area_threshold_down'], _global_settings['area_threshold_up'], _global_settings['solidity_threshold'], _global_settings['extent_threshold'], categories)
-        self._set_ownership(ow)
-
-        if self._required_key(_lbl_n): # If we have nuclei, we can classify spots.
-            colors = []
-            for l, c in spots_locations:
-                if categories[labeled_spots[l, c]] == 'NUCLEAR':
-                    colors.append('#eb4034')
-                elif categories[labeled_spots[l, c]] == 'PERIPHERAL':
-                    colors.append('#fcba03')
-                else:
-                    colors.append('#4287f5')
-        else:
-            colors = None
-
-        self._set_spots(spots_locations, colors)
-        self._set_image(_lbl_s, labeled_spots, {
-            'visible' : False
-        },
-        True)
-
-        indices = write_labels_image(labeled_cells, 0.75)
-
-        self._set_image(_n_cells, indices, {
-            'visible': False,
-            'blending': "additive"
-        })
-        
-        print(colored(f"Segmented spots from `{self._get_current_name()}` in {round(time.time()-start, 1)}s.", 'green'))
-        return True
+def justLaunchWidget():
+    viewer = napari.Viewer()
+    siyw = SpotsInYeastsWidget()
+    viewer.window.add_dock_widget(siyw)
+    print("--- Workflow: XXX ---")
+    napari.run()
 
 
-    @magicgui(call_button="Extract stats")
-    def extract_stats_gui(self):
+####################################################################################
 
-        if not self._required_key(_lbl_c):
-            print(colored("Cells segmentation not available yet.", 'yellow'))
-            return False
 
-        if not self._required_key(_lbl_s):
-            print(colored("Spots segmentation not available yet.", 'yellow'))
-            return False
-
-        if not os.path.isdir(self._get_export_path()):
-            prepare_directory(self._get_export_path())
-
-        if not self._is_batch():
-            self.csvtable = None
-
-        measures_path = self.csvexport if self._is_batch() else os.path.join(self._get_export_path(), self._get_current_name()+".csv")
-        ow = self._get_ownership()
-        
-        if _global_settings['export_mode'] == FormatsList.format_1844:
-            self.csvtable = format_data_1844(ow, self._get_current_name(), self.csvtable)
-        elif _global_settings['export_mode'] == FormatsList.format_1895:
-            self.csvtable = format_data_1895(ow, self._get_current_name(), self.csvtable)
-
-        try:
-            self.csvtable.exportTo(measures_path)
-        except:
-            print(colored("Failed to export measures to: ", 'red'), end="")
-            print(colored(measures_path,'red', attrs=['underline']))
-            return False
-        else:
-            print(colored("Spots exported to: ", 'green'), end="")
-            print(colored(measures_path,'green', attrs=['underline']))
-
-            if not self._is_batch():
-                if platform.system() == 'Windows':
-                    os.startfile(measures_path)
-                elif platform.system() == 'Darwin':  # macOS
-                    subprocess.call(('open', measures_path))
-                else:  # linux variants
-                    subprocess.call(('xdg-open', measures_path))
-
-        return True
-
-    def _get_path(self):
-        return self.path
-
-    def _create_control(self):
-        create_reference_to(
-            self._get_image(_lbl_c),   # labeled_cells
-            self._get_image(_lbl_s),   # labeled_spots
-            self._get_spots(),         # spots_list
-            self._get_current_name(),  # name
-            self._get_export_path(),   # control_dir_path
-            self._get_path(),          # source_path
-            self._get_image(_bf),      # projection_cells
-            self._get_image(_f_spots), # projection_spots
-            self._get_image(_n_cells), # indices
-            self._get_image(_lbl_n),   # labeled_nuclei
-            self._get_image(_nuclei),  # nuclei_fluo
-            self.spots_clr             # spots_colors
-        )
-        return True
-
-    def _batch_folder_worker(self, input_folder, output_folder, nElements):
-        exec_start = time.time()
-        iteration = 0
-        procedure = [
-            (self._load, "Loading image"),
-            (self.split_channels_gui, "Splitting channels"),
-            (self.segment_brightfield_gui, "Segment cells"),
-            (self.segment_nuclei_gui, "Segment nuclei"),
-            (self.segment_spots_gui, "Segment spots"),
-            (self.extract_stats_gui, "Statistics extraction"),
-            (self._create_control, "Control creation")
-        ]
-        now = datetime.now()
-        date_time_string = now.strftime("%Y-%m-%d-%H-%M-%S")
-        self.csvexport   = os.path.join(self.e_path, f"batch-results-{date_time_string}.csv")
-
-        while self._next_item():
-            for i, (step, descr) in enumerate(procedure):
-                print(f"Executing step `{descr}` ({i})")
-                if not step():
-                    print(colored(f"Failed step: `{descr}` ", 'red'), end="")
-                    print(colored(f"({self._get_current_name()})", 'red', attrs=['underline']), end="")
-                    print(colored(".", 'red'))
-            
-            yield iteration
-            iteration += 1
-            print(colored(f"{self._get_current_name()} processed. ({iteration}/{nElements})", 'green'))
-
-            if not self._current_viewer().window._qt_window.isVisible():
-                print(colored("\n========= INTERRUPTED. =========\n", 'red', attrs=['bold']))
-                return
-
-        self._set_batch(False)
-        print(colored(f"\n============= DONE. ({round(time.time()-exec_start, 1)}s) =============\n", 'green', attrs=['bold']))
-        self._clear_state()
-        return True
-
-    @magicgui(
-        input_folder = {'mode': 'd'},
-        output_folder= {'mode': 'd'},
-        call_button  = "Run batch"
-    )
-    def batch_folder_gui(self, input_folder: Path=Path.home(), output_folder: Path=Path.home()):
-        self._clear_state()
-        self._set_batch(True)
-        self._set_export_path(str(output_folder))
-        path = str(input_folder)
-
-        self._set_path(path)
-        nElements = len(self.queue)
-
-        if nElements == 0:
-            print(colored(f"{path} doesn't contain any valid file.", 'red'))
-            return False
-        
-        worker = create_worker(self._batch_folder_worker, input_folder, output_folder, nElements, _progress={'total': nElements})
-        worker.start()
+if __name__ == "__main__":
+    justLaunchWidget()
+    print("DONE.")

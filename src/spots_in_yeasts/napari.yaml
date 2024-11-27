@@ -6,7 +6,7 @@ contributions:
       python_name: spots_in_yeasts._reader:napari_get_reader
       title: Open data with "Spots in yeasts"
     - id: spots-in-yeasts.spots_in_yeasts
-      python_name: spots_in_yeasts._widget:SpotsInYeastsDock
+      python_name: spots_in_yeasts._widget:SpotsInYeastsWidget
       title: Spots In Yeasts
   readers:
     - command: spots-in-yeasts.get_reader

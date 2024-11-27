@@ -15,6 +15,8 @@ from datetime import datetime
 from skimage import exposure
 from scipy.stats import kstest
 from scipy.ndimage import binary_erosion, binary_dilation
+from platformdirs import user_config_dir
+import json
 
 _coordinates = {
     (-1, -1),
@@ -26,6 +28,47 @@ _coordinates = {
     (1, 0),
     (1, 1)
 }
+
+def get_config_path(app_name="spots-in-yeasts", filename="config.json") -> str:
+    config_dir = user_config_dir(app_name)
+    os.makedirs(config_dir, exist_ok=True)
+    cfg_path = os.path.join(config_dir, filename)
+    print(f"Config: {cfg_path}")
+    return cfg_path
+
+def get_config():
+    cfg_path = get_config_path()
+    if not os.path.isfile(cfg_path):
+        return {}
+    with open(cfg_path, 'r') as f:
+        return json.load(f)
+    
+def set_config(data):
+    cfg_path = get_config_path()
+    with open(cfg_path, 'w') as f:
+        json.dump(data, f)
+
+#################################################################################
+
+def find_focused_slice(stack, around=2):
+    """
+    Determines which slice has the best focus and selects a range of slices around it.
+    The process is based on the variance recorded for each slice.
+    Displays a warning if the number of slices is insufficient.
+    A safety check is performed to ensure that the returned indices are within the range of the stack's size.
+
+    Args:
+        stack: (image stack) The stack in which we search the focused area.
+        around: (int) Number of slices to select around the most in-focus one.
+
+    Returns:
+        (int, int): A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
+    """
+    nSlices, _, _ = stack.shape
+    maxSlice = np.argmax([cv2.Laplacian(stack[s].astype(np.float32), cv2.CV_32F).var() for s in range(nSlices)])
+    selected = (max(0, maxSlice-around), min(nSlices, maxSlice+around)+1)
+    return selected
+
 
 def create_random_lut():
     """
@@ -59,36 +102,6 @@ def write_labels_image(image, font_scale):
         cv2.putText(canvas, str(region.label), (int(x-size[0]/2), int(y+size[1]/2)), cv2.FONT_HERSHEY_SIMPLEX, font_scale, 255, thickness)
 
     return canvas
-
-def find_focused_slice(stack, around=2):
-    """
-    Determines which slice has the best focus and selects a range of slices around it.
-    The process is based on the variance recorded for each slice.
-    Displays a warning if the number of slices is insufficient.
-    A safety check is performed to ensure that the returned indices are within the range of the stack's size.
-
-    Args:
-        stack: (image stack) The stack in which we search the focused area.
-        around: (int) Number of slices to select around the most in-focus one.
-
-    Returns:
-        (int, int): A tuple centered around the most in-focus slice. If we call 'F' the index of that slice, then the tuple is: `(F-around, F+around)`.
-    """
-    # If we don't have a stack, we just return a tuple filled with zeros.
-    if len(stack.shape) < 3:
-        print("The image is a single slice, not a stack.")
-        return (0, 0)
-
-    nSlices, width, height = stack.shape
-    maxSlice = np.argmax([cv2.Laplacian(stack[s], cv2.CV_64F).var() for s in range(nSlices)])
-    selected = (max(0, maxSlice-around), min(nSlices-1, maxSlice+around))
-    
-    print(f"Selected slices: ({selected[0]+1}, {selected[1]+1}). ", end="")
-    print(colored(f"({nSlices} slices available)", 'dark_grey'))
-    if selected[1]-selected[0] != 2*around:
-        print(colored("Focused slice too far from center!", 'yellow'))
-
-    return selected
 
 
 def segment_yeasts_cells(transmission, gpu=True):
